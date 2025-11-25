@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+
+</body>
+
+</html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <!-- Favicon -->
+    <link rel="icon" href="http://216.48.189.66:9110/uploads/assets/images/favicon.png" sizes="16x16">
+    <!-- Bootstrap -->
+    <link rel="stylesheet" type="text/css" href="http://216.48.189.66:9110/uploads/assets/css/bootstrap.min.css">
+    <!-- icon -->
+    <link rel="stylesheet" type="text/css" href="http://216.48.189.66:9110/uploads/assets/css/fontawsome.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
+        integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
+    <!--  My_Styles -->
+    <!-- <link rel="stylesheet" type="text/css" href="http://216.48.189.66:9110/uploads/assets/css/style.css">
+    <link rel="stylesheet" type="text/css" href="http://216.48.189.66:9110/uploads/assets/css/responsive.css"> -->
+
+    <style>
+        .sticky-header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 999;
+            background-color: #fff;
+            transition: all 0.3s ease;
+        }
+
+        /*global-css-start*/
+        @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
+
+        body {
+            font-size: 16px;
+            font-weight: 500;
+            color: #000;
+            background-color: #fff;
+            scroll-behavior: smooth;
+            font-family: "Geist", sans-serif;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #00022A;
+            font-weight: 600;
+        }
+
+        strong {
+            font-weight: 800;
+            color: #000;
+        }
+
+        a {
+            text-decoration: none !important;
+            -webkit-transition: all 0.2s;
+            transition: all 0.2s;
+            color: #000;
+            font-weight: 400;
+        }
+
+        a:hover,
+        a:focus {
+            text-decoration: none;
+            outline: none;
+            cursor: pointer;
+            color: auto;
+        }
+
+        .btn.focus,
+        .btn:focus {
+            outline: 0;
+            box-shadow: none;
+        }
+
+        button {
+            color: inherit;
+            border: none;
+            background-color: transparent;
+        }
+
+        p {
+            margin-bottom: 0.5rem;
+            font-size: 16px;
+            font-weight: 400;
+            color: #626884;
+            line-height: 24px;
+        }
+
+        ul,
+        li {
+            margin: 0;
+            padding: 0;
+            list-style-type: none !important;
+        }
+
+        ul {
+            padding-left: 0 !important;
+        }
+
+        hr {
+            background-color: #D0D0D0 !important;
+            opacity: 1;
+            border-color: #D0D0D0 !important;
+        }
+
+        .form-select:focus,
+        .form-control:focus {
+            box-shadow: none !important;
+            border-color: #ccc;
+        }
+
+        .dropdown-item:focus,
+        .dropdown-item:hover {
+            background-color: inherit;
+            color: inherit;
+        }
+
+        label {
+            margin-bottom: 5px;
+        }
+
+        textarea {
+            resize: none;
+        }
+
+        input:focus,
+        button:focus,
+        textarea:focus {
+            outline: none;
+            box-shadow: none;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .email-template-sec {
+            padding: 50px 0;
+        }
+
+        .email-template-sec .container {
+            width: 650px;
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .email-template-sec .email-temp-main-box h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #00022A;
+            line-height: 20px;
+
+        }
+
+        .email-template-sec .email-temp-main-box p {
+            font-size: 18px;
+            font-weight: 400;
+            color: #626884;
+            line-height: 24px;
+
+        }
+
+        .email-template-sec .email-temp-main-box p span {
+            font-weight: 600;
+        }
+
+        .email-template-sec .email-temp-main-box h5 {
+            font-size: 18px;
+            font-weight: 400;
+        }
+
+        .email-template-sec .email-temp-main-box h6 {
+            font-size: 18px;
+            font-weight: 500;
+            color: #4F40FF;
+        }
+
+
+        .email-template-sec .email-temp-main-box .email-temp-logo img {
+            width: 75px;
+        }
+
+        .email-template-sec .bottom-email-footer .email-temp-logo-footer img {
+            width: 50px;
+        }
+
+        .email-template-sec .bottom-email-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0
+        }
+
+        .email-template-sec .email-bottom-social-link ul {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .email-template-sec .email-bottom-social-link .email-temp-icon {
+            color: #98A2B3;
+            font-size: 20px;
+        }
+
+        .email-template-sec .email-temp-main-box .email-temp-list li {
+            font-size: 18px;
+            font-weight: 400;
+            color: #626884;
+            list-style-type: disc !important;
+        }
+
+        .email-template-sec .email-temp-btn .btn {
+            font-size: 16px;
+            font-weight: 500;
+            font-style: normal;
+            padding: 16px 50px;
+            border-radius: 4px;
+            background: #4F40FF;
+            color: #fff;
+            text-align: center;
+            border: 1px solid #4f40ff;
+        }
+
+        .email-template-sec .email-temp-main-box {
+            padding: 30px 20px;
+        }
+
+        .email-template-sec .email-temp-main-box .email-temp-list {
+            padding-left: 20px !important;
+        }
+
+        .email-template-sec .email-temp-main-box ul li span {
+            font-size: 18px;
+            font-weight: 600;
+            color: #626884;
+        }
+
+        .email-template-sec .email-temp-main-box p a {
+            display: inline-block;
+            color: #4F40FF;
+            font-weight: 600 !important;
+            font-size: 18px !important;
+            text-decoration: underline !important;
+        }
+
+        .email-template-sec .email-temp-main-box p {
+            font-size: 18px;
+            font-weight: 400;
+            color: #626884;
+            line-height: 24px;
+        }
+
+        .email-template-sec .email-temp-main-box {
+            padding: 30px 20px;
+        }
+
+        @media(max-width:767px) {
+
+            .email-template-sec {
+                padding-top: 50px;
+                margin: 0 10px;
+            }
+
+            .email-template-sec .container {
+                width: 100%;
+            }
+
+
+
+
+        }
+
+        .email-bottom-social-link ul li a svg {
+            fill: #98A2B3;
+            height: 25px;
+            width: 25px;
+        }
+    </style>
+</head>
+
+<body class="fixed-header-page">
+    <section class="email-template-sec">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12 col-md-12 col-sm-12">
+                    <div class="email-temp-main-box" style="padding: 0px;">
+                        <div class="email-temp-logo">
+                            <img src="http://216.48.189.66:9110/uploads/assets/images/email-temp-logo.png" alt="">
+                        </div>
+                        <div class="mb-4">
+                            <h2 class="py-4">Welcome to Your Wizbizla {{membership}}!</h2>
+                        <p>Dear {{name}},</p>
+                        <p class="py-2">Welcome to Wizbizla! We’re thrilled to <span>have you as a {{member}}
+                                Member</span>. Your membership includes <span>5 bespoke concierge tokens </span>each
+                            month, designed to enhance your experience</p>
+
+                        <p class="py-2"><span>Important Details:</span></p>
+                        <ul class="email-temp-list">
+                            <li>Monthly Usage: You can make up to <span>5 bespoke concierge requests</span> each month.
+                                Please note that these tokens <span>do not roll over</span>—use them or lose them!</li>
+                            <li><span>Effortless Support:</span> Our dedicated team is here to handle all your needs. We
+                                take care of vetting, providing recommendations, and resolving any issues, ensuring a
+                                seamless experience tailored to your preferences and budget.</li>
+                        </ul>
+
+                        <p class="pt-3">To start using your tokens, simply click the button below to redeem one and
+                            access the <span>Bespoke Concierge Form</span> on your dashboard:</p>
+                        </div>
+
+                        <div class="email-temp-btn d-flex my-4" style="margin:20px 0px ;">
+                            <a href="javascript:void(0)" class="btn btn-primary"> Redeem a Token</a>
+                        </div>
+
+                        <p class="py-2">For more details on the services available to you, visit the <a
+                                href="javascript:void(0)">Premium
+                                Services</a> page on Wizbizla.</p>
+                        <h5 class="mb-0" style="margin: 0px;padding: 0px;">Best regards,</h5>
+                        <h5 class="mb-0" style="margin: 0px;padding: 0px;">The Wizbizla Team</h5>
+                        <h6 class="py-3" style="margin: 0px;">Connecting Expats With Trusted Professionals</h6>
+
+                        <div class="bottom-email-footer" style="display: flex;align-items: center; justify-content: space-between;">
+                            <div class="email-temp-logo-footer">
+                                <img src="http://216.48.189.66:9110/uploads/assets/images/email-temp-logo.png" alt="">
+                            </div>
+                            <div class="email-bottom-social-link ms-auto" style="margin-left: auto">
+                                <ul>
+                                    <li>
+                                        <a  href=""><img style="height: 20px;width: 20px; margin-left: 5px;" src="http://216.48.189.66:9110/uploads/assets/images/twitter.png"/>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href=""><img style="height: 20px;width: 20px; margin-left: 5px;" src="http://216.48.189.66:9110/uploads/assets/images/facebook.png"/>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="">
+                                            <img style="height: 20px;width: 20px; margin-left: 5px;" src="http://216.48.189.66:9110/uploads/assets/images/instagram.png"/>
+
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <script type="text/javascript" src="http://216.48.189.66:9110/uploads/assets/js/jquery-3.6.0.js"></script>
+    <script type="text/javascript" src="http://216.48.189.66:9110/uploads/assets/js/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript" src="http://216.48.189.66:9110/uploads/assets/js/owl.carousel.js"></script>
+    <!-- <script type="text/javascript" src="http://216.48.189.66:9110/uploads/assets/js/main.js"></script> -->
+
+
+</body>
+
+</html>

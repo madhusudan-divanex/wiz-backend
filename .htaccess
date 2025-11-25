@@ -1,0 +1,36 @@
+ userSlice api/users/
+ redirect to login after signup 
+ membership % off on yearly 
+
+ http://216.48.189.66:9758
+ http://216.48.189.66:9003
+
+Api (create,get)->
+  Profile,Feature,
+  Marketing,Accerditataion for provider
+Admin->
+    List Podcast Subscriber/Book Customer
+Consumer->
+    Dispute request
+    Bespoke Concierge Service
+    Customized Diligence Service   
+    Welcome Basket 
+Website->
+    Dispute Payment
+    Remove Profile Image
+Api->
+    Service payment
+    Remove Profile
+Admin->
+    Service Dispute
+
+Admin->
+    reference request 
+    CRUD Blog Category
+
+Provider->
+    connection request accept/decline
+    service Dispute 
+    billing
+    
+

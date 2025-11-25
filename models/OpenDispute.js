@@ -1,0 +1,61 @@
+const { Schema, default: mongoose } = require("mongoose");
+
+const disputeSchema=new Schema({
+    userId:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'User',
+        required:true
+    },
+    addOnId:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'addon-services',
+        required:true
+    },
+    addOnType:{
+        type:String,
+        required:true
+    },
+    addOnPrice:{
+        type:Number,
+        required:true
+    },
+    against:{
+        type:String,
+        required:true
+    },
+    type:{
+        type:String,
+        required:true
+    },
+    subject:{
+        type:String,
+        required:true
+    },
+    message:{
+        type:String
+    },
+    image:{
+        type:String
+    },
+    email:{
+        type:String
+    },    
+    country:{
+        type:String
+    },
+    zipCode:{
+        type:String,
+    },
+    phoneNumber:{
+        type:String
+    },
+    cardInformation:{
+        cardHolderName:String,
+        cardNumber:String,
+        expiryDate:String,
+        cvv:String
+    },
+    status:{type:String,enum:['payment-pending','pending','resolved'],default:'payment-pending'},
+    resolution:String,
+},{timestamps:true})
+module.exports=mongoose.model('open-dispute',disputeSchema)
