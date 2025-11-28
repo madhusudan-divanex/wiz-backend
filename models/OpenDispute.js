@@ -20,7 +20,8 @@ const disputeSchema=new Schema({
         required:true
     },
     against:{
-        type:String,
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'User',
         required:true
     },
     type:{

@@ -46,9 +46,8 @@ const requestBespoke = new mongoose.Schema(
     },
 
     businessCategory: {
-      type: String,
-      trim: true,
-      required: false,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
     },
 
     serviceActivity: {
@@ -78,12 +77,12 @@ const requestBespoke = new mongoose.Schema(
       trim: true,
       default: "",
     },
-    type:{
-        type:String,
-        enum:['concierge-service','customize-service'],
-        default:'concierge-service'
+    type: {
+      type: String,
+      enum: ['concierge-service', 'customize-service'],
+      default: 'concierge-service'
     },
-    status:{type:String,enum:['pending','completed'],default:'pending'},
+    status: { type: String, enum: ['pending', 'completed'], default: 'pending' },
   },
   { timestamps: true }
 );
