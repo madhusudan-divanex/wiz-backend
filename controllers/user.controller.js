@@ -245,6 +245,12 @@ exports.deleteUser = async (req, res) => {
     await FeedBack.deleteMany({ feedbackUser: userId })
     await OpenDispute.deleteMany({ userId })
     await RequestBespoke.deleteMany({ userId })
+    await OpenDispute.deleteMany({userId})
+    const disputeImage=await OpenDispute.find({against:userId})
+    for(let d of disputeImage){
+      safeUnlink(d.image)
+    }
+    await OpenDispute.deleteMany({against:userId})
     await ProviderFeature.updateMany(
   { "connection.userId": userId },
   { $pull: { connection: { userId } } }
@@ -1455,7 +1461,7 @@ exports.getDisputeQuery = async (req, res) => {
     }
     const totalCount = await OpenDispute.countDocuments({ userId ,status:{$ne:'payment-pending'}});
     const pendingCount = await OpenDispute.countDocuments({ userId, status: 'pending' })
-    const disputeData = await OpenDispute.find({ userId ,status:{$ne:'payment-pending'}})
+    const disputeData = await OpenDispute.find({ userId ,status:{$ne:'payment-pending'}}).populate({path:'against',select:'-password'})
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

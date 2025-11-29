@@ -878,6 +878,7 @@ exports.getAllServiceDispute = async (req, res) => {
 
         const data = await OpenDispute.find()
             .populate('addOnId')
+            .populate({path:'against',select:'-password'})
             .populate({path:'userId',select:'-password'})
             .sort({
                 status: 1, 
