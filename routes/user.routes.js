@@ -1,5 +1,5 @@
 const express = require('express');
-const { createUseradmin, getAllUsers, getUserById, updateUser,deleteUser, buyMembership, deleteUserWithReason, upgradeMembership, cancelMembership, createScamReport, getScamReports, getScamBook, podcastSubscribe, contactQuery, searchProfile, viewProfile, userViewProfile, bookmarkProfile, getBookmarkData, getRecommendedData, recommendUser, downgradeMembership, nextPayment, userScamReport, deleteReport, dashboardData, purchaseHistory, getRatingReceivedData, getRatingGivenData, getGivenFeedback, giveFeedback, getMyGivenFeedback, sendMsg, getMsg, myChats, addBilling, getAllBilling, getProfileData, getListingUser, getTopProviders, disputeQuery, getDisputeQuery, bespokeRequestQuery, sendBasket, getRequestServiceQuery, subscribeNeswsletter, inviteUserEmail, connectionRequest, connectionAction, disputePayment } = require('../controllers/user.controller');
+const { createUseradmin, getAllUsers, getUserById, updateUser,deleteUser, buyMembership, deleteUserWithReason, upgradeMembership, cancelMembership, createScamReport, getScamReports, getScamBook, podcastSubscribe, contactQuery, searchProfile, viewProfile, userViewProfile, bookmarkProfile, getBookmarkData, getRecommendedData, recommendUser, downgradeMembership, nextPayment, userScamReport, deleteReport, dashboardData, purchaseHistory, getRatingReceivedData, getRatingGivenData, getGivenFeedback, giveFeedback, getMyGivenFeedback, sendMsg, getMsg, myChats, addBilling, getAllBilling, getProfileData, getListingUser, getTopProviders, disputeQuery, getDisputeQuery, bespokeRequestQuery, sendBasket, getRequestServiceQuery, subscribeNeswsletter, inviteUserEmail, connectionRequest, connectionAction, disputePayment, requestPayment } = require('../controllers/user.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { getUserProfile } = require('../controllers/auth.controller');
 const getUploader = require('../config/multerConfig');
@@ -58,6 +58,8 @@ router.get('/billing/:id',authMiddleware, getAllBilling)
 router.post('/open-dispute',uploader.fields([
     { name: 'image', maxCount: 1 }]),authMiddleware, disputeQuery)
 router.post('/dispute-payment',authMiddleware, disputePayment)
+router.post('/request-payment',authMiddleware, requestPayment)
+
 
 router.get('/my-dispute/:id',authMiddleware, getDisputeQuery)
 router.post('/request-bespoke',authMiddleware, bespokeRequestQuery)

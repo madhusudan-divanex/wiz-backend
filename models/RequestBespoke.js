@@ -77,12 +77,41 @@ const requestBespoke = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    addOnId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'addon-services',
+      required: true
+    },
+    addOnType: {
+      type: String
+    },
+    addOnPrice: {
+      type: Number
+    },
     type: {
       type: String,
       enum: ['concierge-service', 'customize-service'],
       default: 'concierge-service'
     },
-    status: { type: String, enum: ['pending', 'completed'], default: 'pending' },
+    country: {
+      type: String
+    },
+    paymentEmail: {
+      type: String
+    },
+    zipCode: {
+      type: String,
+    },
+    phoneNumber: {
+      type: String
+    },
+    cardInformation: {
+      cardHolderName: String,
+      cardNumber: String,
+      expiryDate: String,
+      cvv: String
+    },
+    status: { type: String, enum: ['payment-pending', 'pending', 'completed'], default: 'payment-pending' },
   },
   { timestamps: true }
 );

@@ -219,7 +219,7 @@ exports.deleteUser = async (req, res) => {
     const scamData = await ScamReport.find({ userId })
     if (scamData.length > 0) {
       for (let data of scamData) {
-        const isBookMark=await BookmarkModel.deleteMany({trackerBookmark:data._id})
+        const isBookMark = await BookmarkModel.deleteMany({ trackerBookmark: data._id })
         safeUnlink(data?.image)
       }
     }
@@ -245,16 +245,16 @@ exports.deleteUser = async (req, res) => {
     await FeedBack.deleteMany({ feedbackUser: userId })
     await OpenDispute.deleteMany({ userId })
     await RequestBespoke.deleteMany({ userId })
-    await OpenDispute.deleteMany({userId})
-    const disputeImage=await OpenDispute.find({against:userId})
-    for(let d of disputeImage){
+    await OpenDispute.deleteMany({ userId })
+    const disputeImage = await OpenDispute.find({ against: userId })
+    for (let d of disputeImage) {
       safeUnlink(d.image)
     }
-    await OpenDispute.deleteMany({against:userId})
+    await OpenDispute.deleteMany({ against: userId })
     await ProviderFeature.updateMany(
-  { "connection.userId": userId },
-  { $pull: { connection: { userId } } }
-);
+      { "connection.userId": userId },
+      { $pull: { connection: { userId } } }
+    );
 
 
     const onPvdProData = await Profile.findOne({ userId })
@@ -595,27 +595,63 @@ exports.dashboardData = async (req, res) => {
 }
 exports.purchaseHistory = async (req, res) => {
   const userId = req.params.id;
-  let { page = 1, limit = 10 } = req.query;
+  let { page = 1, limit = 10, type } = req.query;
 
-  // Convert query params to numbers
   page = parseInt(page);
   limit = parseInt(limit);
 
   try {
     // Check if user exists
-    const isExist = await User.findById(userId);
-    if (!isExist) {
+    const user = await User.findById(userId);
+    if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
     const skip = (page - 1) * limit;
-    // Count total purchases for pagination
+
+    // -----------------------------------------
+    // SERVICE HISTORY (Request + Dispute)
+    // -----------------------------------------
+    if (type === "service") {
+
+      const totalRequest = await RequestBespoke.countDocuments({ userId });
+      const totalDispute = await OpenDispute.countDocuments({ userId });
+      const totalPurchase = totalRequest + totalDispute;
+
+      // Fetch all relevant records (without pagination yet)
+      const disputeHistory = await OpenDispute.find({ userId })
+        .populate("addOnId");
+      const requestHistory = await RequestBespoke.find({ userId })
+        .populate("addOnId");
+
+      // Merge + sort by createdAt DESC
+      const mergedHistory = [...disputeHistory, ...requestHistory]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      // Apply pagination AFTER merge
+      const paginatedHistory = mergedHistory.slice(skip, skip + limit);
+
+      return res.status(200).json({
+        success: true,
+        message: "Purchase history fetched successfully",
+        page,
+        limit,
+        totalPurchase,
+        totalPages: Math.ceil(totalPurchase / limit),
+        data: paginatedHistory,
+      });
+    }
+
+    // -----------------------------------------
+    // MEMBERSHIP PURCHASE HISTORY
+    // -----------------------------------------
     const totalPurchase = await BuyMembership.countDocuments({ userId });
-    // Get paginated purchase history
-    const purchaseHistory = await BuyMembership.find({ userId }).populate('membershipId')
+
+    const purchaseHistory = await BuyMembership.find({ userId })
+      .populate("membershipId")
       .skip(skip)
       .limit(limit)
-      .sort({ createdAt: -1 }); // sort by newest first (optional)
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -624,13 +660,15 @@ exports.purchaseHistory = async (req, res) => {
       limit,
       totalPurchase,
       totalPages: Math.ceil(totalPurchase / limit),
-      purchaseHistory,
+      data: purchaseHistory,
     });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 
 exports.getScamReports = async (req, res) => {
@@ -1439,11 +1477,11 @@ exports.getTopProviders = async (req, res) => {
   }
 };
 exports.disputeQuery = async (req, res) => {
-  const { message, subject, type, against, userId ,addOnPrice,addOnId,addOnType} = req.body
+  const { message, subject, type, against, userId, addOnPrice, addOnId, addOnType } = req.body
   const image = req.files?.['image']?.[0]?.path
   try {
-    const dispute = await OpenDispute.create({ message, subject, type, against, userId, image,addOnPrice,addOnId,addOnType });
-    return res.status(200).json({ success: true, dispute});
+    const dispute = await OpenDispute.create({ message, subject, type, against, userId, image, addOnPrice, addOnId, addOnType });
+    return res.status(200).json({ success: true, dispute });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
@@ -1459,22 +1497,42 @@ exports.getDisputeQuery = async (req, res) => {
     if (!isUser) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    const totalCount = await OpenDispute.countDocuments({ userId ,status:{$ne:'payment-pending'}});
-    const pendingCount = await OpenDispute.countDocuments({ userId, status: 'pending' })
-    const disputeData = await OpenDispute.find({ userId ,status:{$ne:'payment-pending'}}).populate({path:'against',select:'-password'})
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    if (req.query.type == 'againstMe') {
+      const totalCount = await OpenDispute.countDocuments({ against:userId, status: { $ne: 'payment-pending' } });
+      const pendingCount = await OpenDispute.countDocuments({ against:userId, status: 'pending' })
+      const disputeData = await OpenDispute.find({ against:userId, status: { $ne: 'payment-pending' } }).populate({ path: 'userId', select: '-password' })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
 
-    return res.status(200).json({
-      success: true,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit),
-      totalCount,
-      disputeData,
-      pendingCount
-    });
+      return res.status(200).json({
+        success: true,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+        totalCount,
+        disputeData,
+        pendingCount
+      });
+    } else {
+      const totalCount = await OpenDispute.countDocuments({ userId, status: { $ne: 'payment-pending' } });
+      const pendingCount = await OpenDispute.countDocuments({ userId, status: 'pending' })
+      const disputeData = await OpenDispute.find({ userId, status: { $ne: 'payment-pending' } }).populate({ path: 'against', select: '-password' })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      return res.status(200).json({
+        success: true,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+        totalCount,
+        disputeData,
+        pendingCount
+      });
+    }
+
 
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -1483,7 +1541,7 @@ exports.getDisputeQuery = async (req, res) => {
 exports.bespokeRequestQuery = async (req, res) => {
   try {
     const contact = await RequestBespoke.create(req.body);
-    return res.status(200).json({ success: true, });
+    return res.status(200).json({ success: true, request: contact });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
@@ -1649,13 +1707,24 @@ exports.connectionAction = async (req, res) => {
 };
 
 exports.disputePayment = async (req, res) => {
-  const {email, cardInformation, phoneNumber, zipCode, country,disputeId } = req.body
+  const { email, cardInformation, phoneNumber, zipCode, country, disputeId } = req.body
   const image = req.files?.['image']?.[0]?.path
   try {
-    const isDispute= await OpenDispute.findById(disputeId)
-    if(!isDispute) return res.status(200).json({message:"Dispute not found",success:false})
-    const dispute = await OpenDispute.findByIdAndUpdate(disputeId,{ email, cardInformation, phoneNumber, zipCode, country,status:'pending' },{new:true});
-    return res.status(200).json({ success: true, dispute});
+    const isDispute = await OpenDispute.findById(disputeId)
+    if (!isDispute) return res.status(200).json({ message: "Dispute not found", success: false })
+    const dispute = await OpenDispute.findByIdAndUpdate(disputeId, { email, cardInformation, phoneNumber, zipCode, country, status: 'pending' }, { new: true });
+    return res.status(200).json({ success: true, dispute });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+exports.requestPayment = async (req, res) => {
+  const { email, cardInformation, phoneNumber, zipCode, country, requestId } = req.body
+  try {
+    const isDispute = await RequestBespoke.findById(requestId)
+    if (!isDispute) return res.status(200).json({ message: "Dispute not found", success: false })
+    const dispute = await RequestBespoke.findByIdAndUpdate(requestId, { paymentEmail: email, cardInformation, phoneNumber, zipCode, country, status: 'pending' }, { new: true });
+    return res.status(200).json({ success: true, dispute });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
