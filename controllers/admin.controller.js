@@ -18,6 +18,7 @@ const OpenDispute = require('../models/OpenDispute');
 const Feedback = require('../models/Feedback');
 const RequestBespoke = require('../models/RequestBespoke');
 const BookmarkModel = require('../models/Bookmark.model');
+const NewsLetter = require('../models/NewsLetter');
 
 
 exports.loginAdmin = async (req, res) => {
@@ -985,6 +986,23 @@ exports.serviceAction = async (req, res) => {
         return res.status(200).json({
             success: true,
             message:"Report updated"
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+exports.newsLetter = async (req, res) => {
+    
+    const {page,limit=10}=req.query
+    try {
+        const data=await NewsLetter.find().sort({createdAt:-1}).skip((page-1)*limit).limit(limit)
+        const totalNewsLetter=await NewsLetter.countDocuments();
+        
+        return res.status(200).json({
+            success: true,
+            data,
+            message:"Newsletter found",
+            totalPages:Math.ceil(totalNewsLetter/10)
         });
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });

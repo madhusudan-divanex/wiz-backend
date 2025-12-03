@@ -15,9 +15,9 @@ Consumer->
     Bespoke Concierge Service
     Customized Diligence Service   
     Welcome Basket 
-Website->
-    Dispute Payment
-    Remove Profile Image
+Laboratory->
+    CRUD Test
+    Patient Details
 Api->
     Service payment
     Remove Profile

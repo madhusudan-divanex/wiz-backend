@@ -1,5 +1,5 @@
 const express = require('express');
-const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction } = require('../controllers/admin.controller');
+const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter } = require('../controllers/admin.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { deleteMembership } = require('../controllers/admin.controller');
 const { updateMembership } = require('../controllers/admin.controller');
@@ -63,6 +63,7 @@ router.post('/reference-action',authMiddleware, referenceAction);
 router.post('/share-mic', shareMicWithUs);
 router.post('/feedback', feedbackQuery);
 router.post('/service-action',authMiddleware, serviceAction);
+router.get('/newsletter', newsLetter);
 
 
 module.exports = router;

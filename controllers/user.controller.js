@@ -1030,7 +1030,7 @@ exports.getRatingGivenData = async (req, res) => {
     const recommendedWithProfiles = await Promise.all(
       recommendedData.map(async (item) => {
         const profile = await ProviderProfile.findOne({ userId: item.recommendedUser._id })
-          .select('profileImage'); // adjust fields as needed
+          .select('profileImage idealClientProfile'); // adjust fields as needed
         return {
           ...item.toObject(),
           profile
