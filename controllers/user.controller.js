@@ -1477,15 +1477,56 @@ exports.getTopProviders = async (req, res) => {
   }
 };
 exports.disputeQuery = async (req, res) => {
-  const { message, subject, type, against, userId, addOnPrice, addOnId, addOnType } = req.body
-  const image = req.files?.['image']?.[0]?.path
   try {
-    const dispute = await OpenDispute.create({ message, subject, type, against, userId, image, addOnPrice, addOnId, addOnType });
+    const { 
+      message, 
+      subject, 
+      type, 
+      against, 
+      userId, 
+      addOnPrice, 
+      addOnId, 
+      addOnType,
+      serviceUsed
+    } = req.body;
+
+    const image = req.files?.image?.[0]?.path || null;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(200).json({ success: false, message: "User does not exist" });
+    }
+    if (serviceUsed) {
+      if (user.freeService <= 0) {
+        return res.status(200).json({
+          success: false,
+          message: "No free services remaining"
+        });
+      }
+      user.freeService -= 1;
+      await user.save();
+    }
+    const data = {
+      message,
+      subject,
+      type,
+      against,
+      userId,
+      image,
+      addOnPrice,
+      addOnId,
+      addOnType,
+      status: serviceUsed ? "pending" : "payment-pending"
+    };
+
+    const dispute = await OpenDispute.create(data);
     return res.status(200).json({ success: true, dispute });
+
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 exports.getDisputeQuery = async (req, res) => {
   const userId = req.params.id;
   const page = parseInt(req.query.page) || 1;
@@ -1540,12 +1581,38 @@ exports.getDisputeQuery = async (req, res) => {
 };
 exports.bespokeRequestQuery = async (req, res) => {
   try {
-    const contact = await RequestBespoke.create(req.body);
-    return res.status(200).json({ success: true, request: contact });
+    const { userId, serviceUsed, ...rest } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User does not exist" });
+    }
+
+    if (serviceUsed) {
+      if (user.freeService <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "No free service remaining"
+        });
+      }
+      user.freeService -= 1;
+      await user.save();
+    }
+
+    const data = {
+      ...rest,
+      userId,
+      status: serviceUsed ? "pending" : "payment-pending",
+    };
+
+    const request = await RequestBespoke.create(data);
+
+    return res.status(200).json({ success: true, request });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 exports.sendBasket = async (req, res) => {
   const userId = req.params.id
   try {

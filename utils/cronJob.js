@@ -5,6 +5,7 @@ const User = require('../models/user.model');
 const ProviderAccreditation = require('../models/Provider/providerAccreditation.model');
 const OpenDispute = require('../models/OpenDispute');
 const safeUnlink = require('./globalFuntion');
+const Advertisement = require('../models/Provider/providerAdvertisement.model');
 
 cron.schedule('0 1 * * *', async () => {
     console.log('🔁 Cron Job Running: Checking expired memberships');
@@ -108,3 +109,37 @@ cron.schedule('0 * * * *', () => {
   deleteOldPendingDisputes();
 });
 
+
+// Run every day at 00:00 (midnight)
+cron.schedule('0 0 * * *', async () => {
+  try {
+    console.log("📌 Ads status cron started:", new Date());
+
+    const today = moment().startOf('day').toDate();
+
+    // 1. Set APPROVED ads to LIVE when startDate == today
+    const liveUpdated = await Advertisement.updateMany(
+      {
+        status: "approve",
+        startDate: {
+          $gte: today,
+          $lt: moment(today).add(1, "day").toDate()
+        }
+      },
+      { $set: { status: "live" } }
+    );
+
+    // 2. Set LIVE ads to EXPIRED when endDate < today
+    const expiredUpdated = await Advertisement.updateMany(
+      {
+        status: "live",
+        endDate: { $lt: today }
+      },
+      { $set: { status: "expired" } }
+    );
+
+    console.log(`✅ Ads updated -> live: ${liveUpdated.modifiedCount}, expired: ${expiredUpdated.modifiedCount}`);
+  } catch (error) {
+    console.error("❌ Error in ads cron job:", error.message);
+  }
+});

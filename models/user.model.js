@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ['consumer', 'provider'], required: true },
     approvedOn: Date,
     publishedOn: Date,
+    freeService:{type:Number,default:0},
     onBoarding: { type: Boolean, default: false },
     referedBy: {
         type: mongoose.Schema.Types.ObjectId,

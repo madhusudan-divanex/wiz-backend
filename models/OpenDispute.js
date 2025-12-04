@@ -56,6 +56,7 @@ const disputeSchema=new Schema({
         expiryDate:String,
         cvv:String
     },
+    serviceUsed:{type:Boolean,default:false},
     status:{type:String,enum:['payment-pending','pending','resolved'],default:'payment-pending'},
     resolution:String,
 },{timestamps:true})

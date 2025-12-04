@@ -945,7 +945,7 @@ exports.getRequestedService = async (req, res) => {
     const limit=10
     const totalQuery = await RequestBespoke.countDocuments({type});
 
-    const requestedData = await RequestBespoke.find({type}).sort({createdAt:-1}).populate('userId')
+    const requestedData = await RequestBespoke.find({type}).sort({createdAt:-1}).populate({path:'businessCategory',select:"name"}).populate({path:'userId',select:'-password'})
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
@@ -991,8 +991,7 @@ exports.serviceAction = async (req, res) => {
         return res.status(500).json({ success: false, message: err.message });
     }
 };
-exports.newsLetter = async (req, res) => {
-    
+exports.newsLetter = async (req, res) => {    
     const {page,limit=10}=req.query
     try {
         const data=await NewsLetter.find().sort({createdAt:-1}).skip((page-1)*limit).limit(limit)
@@ -1006,5 +1005,65 @@ exports.newsLetter = async (req, res) => {
         });
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
+    }
+};
+exports.updateAdvertisement = async (req, res) => {
+    const {adId,amount,startDate,endDate,adDesc}=req.body
+    const adImage=req.files?.['adImage']?.[0]?.path
+    try {
+        const getAd=await Advertisement.findById(adId)
+        if(!getAd){
+            return res.status(200).json({message:"Advertisement not exists",status:false})
+        }        
+        if(adImage && getAd.adImage){
+            safeUnlink(getAd.adImage)
+        }
+        const updateData=await Advertisement.findByIdAndUpdate(adId,{adImage,amount,adDesc,startDate,endDate},{new:true})
+        if(updateData){
+            return res.status(200).json({message:"Advertisement updated",status:true})
+        }else{
+            return res.status(200).json({
+                status: false,
+                message:"Advertisement not updated"
+            });
+        }
+    } catch (err) {
+        safeUnlink(adIMage)
+        return res.status(500).json({ status: false, message: err.message });
+    }
+};
+
+exports.getAvailableDates = async (req, res) => {
+    try {
+        const ads = await Advertisement.find({
+            status: { $in: ["approve", "live"] } // consider only active ads
+        });
+        if (!ads || ads.length === 0) {
+            return res.status(200).json({ message: "No active advertisements", status: false, occupiedDates: [] });
+        }
+
+        const occupiedDates = [];
+
+        ads.forEach(ad => {
+            if (ad.startDate && ad.endDate) {
+                let current = new Date(ad.startDate);
+                const end = new Date(ad.endDate);
+
+                while (current <= end) {
+                    occupiedDates.push(new Date(current).toISOString().split("T")[0]);
+                    current.setDate(current.getDate() + 1);
+                }
+            }
+        });
+
+        const uniqueDates = [...new Set(occupiedDates)];
+
+        return res.status(200).json({
+            status: true,
+            occupiedDates: uniqueDates
+        });
+
+    } catch (err) {
+        return res.status(500).json({ status: false, message: err.message });
     }
 };

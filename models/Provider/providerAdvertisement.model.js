@@ -9,8 +9,12 @@ const adSchema = new mongoose.Schema(
         spot: { type: String, required: true },
         contactNumber: { type: String, required: true },
         image: { type: String, required: true },
-        usePoint: { type: Boolean },
-        status:{type:String,enum:['under-review','live','expired','declined'],default:'under-review'}
+        adImage:{type:String},
+        adDesc:{type:String},
+        startDate:{type:Date},
+        endDate:{type:Date},
+        amount: { type: Number },
+        status:{type:String,enum:['under-review','approve','live','expired','declined'],default:'under-review'}
     },
     { timestamps: true }
 );

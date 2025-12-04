@@ -111,6 +111,7 @@ const requestBespoke = new mongoose.Schema(
       expiryDate: String,
       cvv: String
     },
+    serviceUsed:{type:Boolean,default:false},
     status: { type: String, enum: ['payment-pending', 'pending', 'completed'], default: 'payment-pending' },
   },
   { timestamps: true }

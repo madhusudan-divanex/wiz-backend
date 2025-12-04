@@ -12,22 +12,22 @@ const StayUpdate = require('../models/Consumer/StayUpdate');
 exports.signUpUser = async (req, res) => {
     const { firstName, lastName, email, contactNumber, password, role,referedBy } = req.body;
     try {
+        const data={firstName, lastName, email, contactNumber, password, role,}
         const isExist = await User.findOne({ email })
         if (isExist) {
             return res.status(200).json({ message: "User already exist", status: false })
         }
+        const isRefer=await User.findById(referedBy)
+        if(isRefer && isRefer.role===role){
+            isRefer.freeService=isRefer.freeService+1
+            await isRefer.save()
+            data.referedBy=referedBy
+            data.freeService=1
+        }
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create user
-        const newUser = await User.create({
-            firstName,
-            lastName,
-            email,
-            contactNumber,
-            password: hashedPassword,
-            role,
-            referedBy
-        });
+        const newUser = await User.create(data);
 
         if (newUser) {
             const code = generateOTP()
