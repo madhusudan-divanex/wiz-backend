@@ -1,5 +1,5 @@
 const express = require('express');
-const { createUseradmin, getAllUsers, getUserById, updateUser,deleteUser, buyMembership, deleteUserWithReason, upgradeMembership, cancelMembership, createScamReport, getScamReports, getScamBook, podcastSubscribe, contactQuery, searchProfile, viewProfile, userViewProfile, bookmarkProfile, getBookmarkData, getRecommendedData, recommendUser, downgradeMembership, nextPayment, userScamReport, deleteReport, dashboardData, purchaseHistory, getRatingReceivedData, getRatingGivenData, getGivenFeedback, giveFeedback, getMyGivenFeedback, sendMsg, getMsg, myChats, addBilling, getAllBilling, getProfileData, getListingUser, getTopProviders, disputeQuery, getDisputeQuery, bespokeRequestQuery, sendBasket, getRequestServiceQuery, subscribeNeswsletter, inviteUserEmail, connectionRequest, connectionAction, disputePayment, requestPayment } = require('../controllers/user.controller');
+const { createUseradmin, getAllUsers, getUserById, updateUser,deleteUser, buyMembership, deleteUserWithReason, upgradeMembership, cancelMembership, createScamReport, getScamReports, getScamBook, podcastSubscribe, contactQuery, searchProfile, viewProfile, userViewProfile, bookmarkProfile, getBookmarkData, getRecommendedData, recommendUser, downgradeMembership, nextPayment, userScamReport, deleteReport, dashboardData, purchaseHistory, getRatingReceivedData, getRatingGivenData, getGivenFeedback, giveFeedback, getMyGivenFeedback, sendMsg, getMsg, myChats, addBilling, getAllBilling, getProfileData, getListingUser, getTopProviders, disputeQuery, getDisputeQuery, bespokeRequestQuery, sendBasket, getRequestServiceQuery, subscribeNeswsletter, inviteUserEmail, connectionRequest, connectionAction, disputePayment, requestPayment, getLiveAd } = require('../controllers/user.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { getUserProfile } = require('../controllers/auth.controller');
 const getUploader = require('../config/multerConfig');
@@ -8,6 +8,7 @@ const uploader = getUploader('provider');
 
 router.post('/add', createUseradmin);
 router.get('/all', getAllUsers);
+router.get('/ads-live',getLiveAd)
 router.get('/profile', authMiddleware, getUserProfile)
 router.get('/profile-data/:id', authMiddleware, getProfileData)
 router.get('/listing-provider',authMiddleware, getListingUser)
@@ -70,6 +71,9 @@ router.post('/subscribe-newsletter',subscribeNeswsletter)
 router.post('/invite-user',inviteUserEmail)
 router.get('/connection-request/:id',authMiddleware,connectionRequest)
 router.post('/connection-action',authMiddleware,connectionAction)
+
+
+
 
 
 module.exports = router;

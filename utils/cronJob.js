@@ -115,21 +115,20 @@ cron.schedule('0 0 * * *', async () => {
   try {
     console.log("📌 Ads status cron started:", new Date());
 
-    const today = moment().startOf('day').toDate();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
-    // 1. Set APPROVED ads to LIVE when startDate == today
+    // 1. APPROVED → LIVE when startDate == today
     const liveUpdated = await Advertisement.updateMany(
       {
         status: "approve",
-        startDate: {
-          $gte: today,
-          $lt: moment(today).add(1, "day").toDate()
-        }
+        startDate: { $gte: today, $lt: tomorrow }
       },
       { $set: { status: "live" } }
     );
 
-    // 2. Set LIVE ads to EXPIRED when endDate < today
+    // 2. LIVE → EXPIRED when endDate < today
     const expiredUpdated = await Advertisement.updateMany(
       {
         status: "live",

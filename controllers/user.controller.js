@@ -1478,14 +1478,14 @@ exports.getTopProviders = async (req, res) => {
 };
 exports.disputeQuery = async (req, res) => {
   try {
-    const { 
-      message, 
-      subject, 
-      type, 
-      against, 
-      userId, 
-      addOnPrice, 
-      addOnId, 
+    const {
+      message,
+      subject,
+      type,
+      against,
+      userId,
+      addOnPrice,
+      addOnId,
       addOnType,
       serviceUsed
     } = req.body;
@@ -1539,9 +1539,9 @@ exports.getDisputeQuery = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
     if (req.query.type == 'againstMe') {
-      const totalCount = await OpenDispute.countDocuments({ against:userId, status: { $ne: 'payment-pending' } });
-      const pendingCount = await OpenDispute.countDocuments({ against:userId, status: 'pending' })
-      const disputeData = await OpenDispute.find({ against:userId, status: { $ne: 'payment-pending' } }).populate({ path: 'userId', select: '-password' })
+      const totalCount = await OpenDispute.countDocuments({ against: userId, status: { $ne: 'payment-pending' } });
+      const pendingCount = await OpenDispute.countDocuments({ against: userId, status: 'pending' })
+      const disputeData = await OpenDispute.find({ against: userId, status: { $ne: 'payment-pending' } }).populate({ path: 'userId', select: '-password' })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -1721,9 +1721,14 @@ exports.connectionRequest = async (req, res) => {
     const isUser = await User.findById(userId)
     if (!isUser) return res.status(200).json({ message: "User not found", success: false })
     const connectionRequest = await ProviderFeature.find({
-      "connection.userId": userId,
-      "connection.status": "pending"
+      connection: {
+        $elemMatch: {
+          userId: userId,
+          status: "pending"
+        }
+      }
     }).populate('userId', 'firstName lastName email');
+
     const userProfile = await Promise.all(connectionRequest.map(async (item) => {
       const profileData = await ProviderProfile.findOne({ userId: item.userId._id }).select('profileImage title company');
 
@@ -1793,6 +1798,16 @@ exports.requestPayment = async (req, res) => {
     const dispute = await RequestBespoke.findByIdAndUpdate(requestId, { paymentEmail: email, cardInformation, phoneNumber, zipCode, country, status: 'pending' }, { new: true });
     return res.status(200).json({ success: true, dispute });
   } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+exports.getLiveAd = async (req, res) => {
+
+  try {
+    const isAd = await Advertisement.findOne({ status: "live" }).sort({ createdAt: -1 });
+    return res.status(200).json({ message: "Ad  found", success: true, ad: isAd });
+  } catch (err) {
+    console.log(err)
     return res.status(400).json({ success: false, message: err.message });
   }
 };
