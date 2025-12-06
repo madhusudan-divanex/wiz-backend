@@ -489,7 +489,7 @@ exports.getFeaturesByUserId = async (req, res) => {
     const profileData = await Promise.all(
       paginatedConnections.map(async (user) => {
         const profileData =
-          (await ProviderProfile.findOne({ userId: user.userId._id }).select('profileImage').lean()) || {};
+          (await ProviderProfile.findOne({ userId: user.userId._id }).select('profileImage title company').lean()) || {};
         return {
           ...user.toObject(),
           profileData,
