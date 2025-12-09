@@ -609,31 +609,27 @@ exports.purchaseHistory = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    // -----------------------------------------
-    // SERVICE HISTORY (Request + Dispute)
-    // -----------------------------------------
+    // ----------------------------------------------------
+    // SERVICE HISTORY ONLY (Request + Dispute)
+    // ----------------------------------------------------
     if (type === "service") {
-
       const totalRequest = await RequestBespoke.countDocuments({ userId });
       const totalDispute = await OpenDispute.countDocuments({ userId });
       const totalPurchase = totalRequest + totalDispute;
 
-      // Fetch all relevant records (without pagination yet)
       const disputeHistory = await OpenDispute.find({ userId })
         .populate("addOnId");
       const requestHistory = await RequestBespoke.find({ userId })
         .populate("addOnId");
 
-      // Merge + sort by createdAt DESC
       const mergedHistory = [...disputeHistory, ...requestHistory]
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      // Apply pagination AFTER merge
       const paginatedHistory = mergedHistory.slice(skip, skip + limit);
 
       return res.status(200).json({
         success: true,
-        message: "Purchase history fetched successfully",
+        message: "Service purchase history fetched successfully",
         page,
         limit,
         totalPurchase,
@@ -642,25 +638,45 @@ exports.purchaseHistory = async (req, res) => {
       });
     }
 
-    // -----------------------------------------
-    // MEMBERSHIP PURCHASE HISTORY
-    // -----------------------------------------
-    const totalPurchase = await BuyMembership.countDocuments({ userId });
+    // ----------------------------------------------------
+    // FULL PURCHASE HISTORY (Membership + Service)
+    // ----------------------------------------------------
 
-    const purchaseHistory = await BuyMembership.find({ userId })
-      .populate("membershipId")
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 });
+    // Counts
+    const totalMembership = await BuyMembership.countDocuments({ userId });
+    const totalRequest = await RequestBespoke.countDocuments({ userId });
+    const totalDispute = await OpenDispute.countDocuments({ userId });
+
+    const totalCombined = totalMembership + totalRequest + totalDispute;
+
+    // Fetch all data (unpaginated)
+    const membershipHistory = await BuyMembership.find({ userId })
+      .populate("membershipId");
+
+    const disputeHistory = await OpenDispute.find({ userId })
+      .populate("addOnId");
+
+    const requestHistory = await RequestBespoke.find({ userId })
+      .populate("addOnId");
+
+    // Merge all
+    const mergedHistory = [
+      ...membershipHistory,
+      ...disputeHistory,
+      ...requestHistory
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Apply pagination
+    const paginatedHistory = mergedHistory.slice(skip, skip + limit);
 
     return res.status(200).json({
       success: true,
-      message: "Purchase history fetched successfully",
+      message: "Full purchase history fetched successfully",
       page,
       limit,
-      totalPurchase,
-      totalPages: Math.ceil(totalPurchase / limit),
-      data: purchaseHistory,
+      totalPurchase: totalCombined,
+      totalPages: Math.ceil(totalCombined / limit),
+      data: paginatedHistory,
     });
 
   } catch (error) {
@@ -668,6 +684,7 @@ exports.purchaseHistory = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 
 
@@ -873,17 +890,17 @@ exports.userViewProfile = async (req, res) => {
   }
 };
 exports.bookmarkProfile = async (req, res) => {
-  const { userId, bookmarkUser, trackerBookmark } = req.body
+  const { userId, bookmarkUser, trackerBookmark,blogBookmark } = req.body
   try {
     if (userId == bookmarkUser) {
       return res.status(200).json({ success: true, });
     }
-    const isExist = await BookMarkProfile.findOne({ userId, bookmarkUser, trackerBookmark })
+    const isExist = await BookMarkProfile.findOne({ userId, bookmarkUser, trackerBookmark,blogBookmark  })
     if (isExist) {
       await BookMarkProfile.findByIdAndDelete(isExist._id)
       return res.status(200).json({ success: true, });
     }
-    const contact = await BookMarkProfile.create({ userId, bookmarkUser, trackerBookmark });
+    const contact = await BookMarkProfile.create({ userId, bookmarkUser, trackerBookmark,blogBookmark  });
     return res.status(200).json({ success: true, });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
@@ -904,6 +921,12 @@ exports.getBookmarkData = async (req, res) => {
     else if (type == 'scam') {
       const bookmarks = await BookMarkProfile.find({ userId, trackerBookmark: { $ne: null } })?.sort({ createdAt: -1 })
         .populate('trackerBookmark').lean();
+      return res.status(200).json({ success: true, bookmarkData: bookmarks });
+
+    }
+     else if (type == 'blog') {
+      const bookmarks = await BookMarkProfile.find({ userId, blogBookmark: { $ne: null } })?.sort({ createdAt: -1 })
+        .populate('blogBookmark').lean();
       return res.status(200).json({ success: true, bookmarkData: bookmarks });
 
     } else {

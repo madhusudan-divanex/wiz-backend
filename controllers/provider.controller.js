@@ -698,7 +698,7 @@ exports.addReference = async (req, res) => {
     const user = await User.findById(userId);
     if (!user)
       return res.status(404).json({ message: "User not found", status: false });
-    const isMatch = await User.findOne({ email: refData.email, role: 'provider' });
+    const isMatch = await User.findOne({ email: refData.contact, role: 'provider' });
     if (!isMatch)
       return res.status(404).json({ message: "User not found", status: false });
     let provider = await ProviderFeature.findOne({ userId });

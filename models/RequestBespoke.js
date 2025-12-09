@@ -56,9 +56,9 @@ const requestBespoke = new mongoose.Schema(
       required: false,
     },
 
-    priceRange: {
-      type: Number,
-      default: null,
+     priceRange: {
+      minPrice: { type: Number, default: 0 },
+      maxPrice: { type: Number, default: 0 },
     },
 
     serviceDate: {

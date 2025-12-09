@@ -19,7 +19,7 @@ const Feedback = require('../models/Feedback');
 const RequestBespoke = require('../models/RequestBespoke');
 const BookmarkModel = require('../models/Bookmark.model');
 const NewsLetter = require('../models/NewsLetter');
-
+const ProviderFeatures =require('../models/Provider/providerFeatures.model')
 
 exports.loginAdmin = async (req, res) => {
     const { email, password } = req.body;
@@ -748,9 +748,10 @@ exports.getAllAds = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
+        const status =req.query.status
 
         // Fetch ads with 'under-review' first
-        const ads = await Advertisement.find()
+        const ads = await Advertisement.find({status})
             .sort({
                 status: 1, // Sort by status alphabetically: 'expired' < 'live' < 'under-review'
                 createdAt: -1
@@ -765,7 +766,7 @@ exports.getAllAds = async (req, res) => {
         ];
 
         // Get total count for pagination metadata
-        const total = await Advertisement.countDocuments();
+        const total = await Advertisement.countDocuments({status});
 
         res.status(200).json({
             status: true,
@@ -1008,17 +1009,17 @@ exports.newsLetter = async (req, res) => {
     }
 };
 exports.updateAdvertisement = async (req, res) => {
-    const {adId,amount,startDate,endDate,adDesc}=req.body
-    const adImage=req.files?.['adImage']?.[0]?.path
+    const {adId,amount,startDate,endDate,adDesc,accountName,contactNumber,description,spot}=req.body
+    const image=req.files?.['image']?.[0]?.path
     try {
         const getAd=await Advertisement.findById(adId)
         if(!getAd){
             return res.status(200).json({message:"Advertisement not exists",status:false})
         }        
-        if(adImage && getAd.adImage){
-            safeUnlink(getAd.adImage)
+        if(image && getAd.image){
+            safeUnlink(getAd.image)
         }
-        const updateData=await Advertisement.findByIdAndUpdate(adId,{adImage,amount,adDesc,startDate,endDate},{new:true})
+        const updateData=await Advertisement.findByIdAndUpdate(adId,{image,amount,adDesc,startDate,endDate,accountName,contactNumber,description,spot},{new:true})
         if(updateData){
             return res.status(200).json({message:"Advertisement updated",status:true})
         }else{
@@ -1067,3 +1068,71 @@ exports.getAvailableDates = async (req, res) => {
         return res.status(500).json({ status: false, message: err.message });
     }
 };
+exports.referenceAction = async (req, res) => {
+    const { status, featureId, referenceId } = req.body;
+
+    try {
+        if (!status || !featureId || !referenceId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "status, featureId and referenceId are required" 
+            });
+        }
+        const featureDoc = await ProviderFeatures.findById(featureId);
+        if (!featureDoc) {
+            return res.status(404).json({ success: false, message: "Feature record not found" });
+        }
+
+        const reference = featureDoc.references.find(ref => ref._id.equals(referenceId));
+
+        if (!reference) {
+            return res.status(404).json({ success: false, message: "Reference not found" });
+        }
+
+        reference.status = status;
+        await featureDoc.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Reference updated successfully",
+            data: reference
+        });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};
+
+exports.getAllReferencesForAdmin = async (req, res) => {
+    try {
+        const allFeatures = await ProviderFeatures.find()
+            .populate("userId", "firstName lastName email");
+
+        // Filter out users with no references
+        const filteredFeatures = allFeatures.filter(item => item.references.length > 0);
+
+        const result = filteredFeatures.map(item => ({
+            user: item.userId,
+            references: item.references
+        }));
+
+        return res.status(200).json({
+            success: true,
+            message: "All users' references fetched successfully",
+            data: result
+        });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};
+
+

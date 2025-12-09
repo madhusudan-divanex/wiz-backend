@@ -1,5 +1,5 @@
 const express = require('express');
-const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter, updateAdvertisement, getAvailableDates } = require('../controllers/admin.controller');
+const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter, updateAdvertisement, getAvailableDates, getAllReferencesForAdmin } = require('../controllers/admin.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { deleteMembership } = require('../controllers/admin.controller');
 const { updateMembership } = require('../controllers/admin.controller');
@@ -65,8 +65,12 @@ router.post('/feedback', feedbackQuery);
 router.post('/service-action',authMiddleware, serviceAction);
 router.get('/newsletter', newsLetter);
 router.post('/advertisement',uploader.fields([
-    { name: 'adImage', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
   ]),authMiddleware, updateAdvertisement);
 router.get('/occupied-dates', getAvailableDates);
+router.get('/get-add-reference',authMiddleware, getAllReferencesForAdmin);
+
+router.post('/reference-action',authMiddleware, referenceAction);
+
 
 module.exports = router;

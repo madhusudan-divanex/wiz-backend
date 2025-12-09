@@ -14,6 +14,10 @@ const bookmarkSchema=new Schema({
     trackerBookmark:{
         type:mongoose.Schema.Types.ObjectId,
         ref:'scam-report',
+    },
+    blogBookmark:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'blog',
     }
 
 },{timestamps:true})
