@@ -19,7 +19,10 @@ const Feedback = require('../models/Feedback');
 const RequestBespoke = require('../models/RequestBespoke');
 const BookmarkModel = require('../models/Bookmark.model');
 const NewsLetter = require('../models/NewsLetter');
-const ProviderFeatures =require('../models/Provider/providerFeatures.model')
+const ProviderFeatures =require('../models/Provider/providerFeatures.model');
+const Chat = require('../models/Chat');
+const ProviderProfile = require('../models/Provider/providerProfile.model');
+const ConsumerProfile =  require("../models/Consumer/Profile");
 
 exports.loginAdmin = async (req, res) => {
     const { email, password } = req.body;
@@ -844,7 +847,7 @@ exports.adAction = async (req, res) => {
         return res.status(500).json({ success: false, message: err.message });
     }
 };
-exports.referenceAction = async (req, res) => {
+exports.trusedReferenceAction = async (req, res) => {
     const {status,refId,comment}=req.body
     try {
         const isExist=await Reference.findById(refId)
@@ -1088,7 +1091,6 @@ exports.referenceAction = async (req, res) => {
         if (!reference) {
             return res.status(404).json({ success: false, message: "Reference not found" });
         }
-
         reference.status = status;
         await featureDoc.save();
 
@@ -1108,31 +1110,199 @@ exports.referenceAction = async (req, res) => {
 };
 
 exports.getAllReferencesForAdmin = async (req, res) => {
-    try {
-        const allFeatures = await ProviderFeatures.find()
-            .populate("userId", "firstName lastName email");
+  try {
+    // Fetch all features with populated user
+    const allFeatures = await ProviderFeatures.find()
+      .populate("userId", "firstName lastName email");
 
-        // Filter out users with no references
-        const filteredFeatures = allFeatures.filter(item => item.references.length > 0);
+    // Filter: Keep only records where at least 1 reference is pending
+    const filtered = allFeatures
+      .map(feature => {
+        // Extract only pending references
+        const pendingRefs = feature.references.filter(ref => ref.status === "pending");
 
-        const result = filteredFeatures.map(item => ({
-            user: item.userId,
-            references: item.references
-        }));
+        if (pendingRefs.length === 0) return null;
 
-        return res.status(200).json({
-            success: true,
-            message: "All users' references fetched successfully",
-            data: result
-        });
+        return {
+          user: feature.userId,
+          references: pendingRefs,
+          featureId: feature._id
+        };
+      })
+      .filter(item => item !== null);
 
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({
-            success: false,
-            message: err.message
-        });
-    }
+    return res.status(200).json({
+      success: true,
+      message: "All pending references fetched successfully",
+      data: filtered
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
 };
+
+exports.getAllChatsForAdmin = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  try {
+    // Step 1: Get all unique chat pairs
+    const chatPairs = await Chat.aggregate([
+      {
+        $project: {
+          from: 1,
+          to: 1,
+          // Create a sorted pair to avoid duplicate combinations
+          pair: {
+            $cond: [
+              { $lt: ["$from", "$to"] },
+              ["$from", "$to"],
+              ["$to", "$from"]
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$pair"
+        }
+      }
+    ]);
+
+    // Extract unique user IDs
+    const allUserIds = [
+      ...new Set(chatPairs.flatMap(pair => pair._id))
+    ];
+    // Step 2: Fetch all users involved
+    const users = await User.find({
+      _id: { $in: allUserIds }
+    }).select("firstName lastName role");
+    // Step 3: Build chat threads with last message
+    const chatThreads = await Promise.all(
+      chatPairs.map(async (pairObj) => {
+        const [u1, u2] = pairObj._id;
+
+        // Get both user objects
+        const user1 = users.find(u => u._id.toString() === u1.toString());
+        const user2 = users.find(u => u._id.toString() === u2.toString());
+        console.log("user",user1)
+
+        // Get last chat between these two
+        const lastMessage = await Chat.findOne({
+          $or: [
+            { from: u1, to: u2 },
+            { from: u2, to: u1 }
+          ]
+        })
+          .sort({ createdAt: -1 });
+
+        if(!lastMessage) return null;
+        // Profiles
+        const profile1 = user1.role === "consumer"
+          ? await ConsumerProfile.findOne({ userId: user1._id }).select('profileImage')
+          : await ProviderProfile.findOne({ userId: user1._id }).select('profileImage');
+
+        const profile2 = user2.role === "consumer"
+          ? await ConsumerProfile.findOne({ userId: user2._id }).select('profileImage')
+          : await ProviderProfile.findOne({ userId: user2._id }).select('profileImage');
+
+        return {
+          users: { user1, profile1, user2, profile2 },
+          lastMessage: lastMessage.text ? lastMessage.text : lastMessage?.chatImg,
+          createdAt: lastMessage.createdAt
+        };
+      })
+    );
+
+    // Remove null threads
+    const filteredThreads = chatThreads.filter(t => t !== null);
+
+    // Step 4: Sort by last message date
+    filteredThreads.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Step 5: Pagination
+    const paginatedData = filteredThreads.slice(skip, skip + limit);
+
+    return res.status(200).json({
+      status: true,
+      message: "Fetched all chat threads successfully",
+      total: filteredThreads.length,
+      page,
+      limit,
+      data: paginatedData
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Failed to fetch chat threads",
+      error: error.message
+    });
+  }
+};
+exports.getChatData = async (req, res) => {
+  const { to, from } = req.body;
+
+  try {
+    // 1️⃣ Fetch both users
+    const sender = await User.findById(from).select("firstName lastName role");
+    const receiver = await User.findById(to).select("firstName lastName role");
+
+    if (!sender || !receiver) {
+      return res.status(404).json({
+        status: false,
+        message: "One or both users not found"
+      });
+    }
+
+    // 2️⃣ Fetch their profiles
+    const senderProfile = sender.role === "consumer"
+      ? await ConsumerProfile.findOne({ userId: sender._id })
+      : await ProviderProfile.findOne({ userId: sender._id });
+
+    const receiverProfile = receiver.role === "consumer"
+      ? await ConsumerProfile.findOne({ userId: receiver._id })
+      : await ProviderProfile.findOne({ userId: receiver._id });
+
+    // 3️⃣ Fetch messages
+    const allMsg = await Chat.find({
+      $or: [
+        { from, to },
+        { from: to, to: from }
+      ]
+    }).sort({ createdAt: 1 });
+
+    // 4️⃣ Return response
+    return res.status(200).json({
+      status: true,
+      message: "Messages fetched successfully",
+      users: {
+        sender: {
+          user: sender,
+          profile: senderProfile
+        },
+        receiver: {
+          user: receiver,
+          profile: receiverProfile
+        }
+      },
+      allMsg
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Failed to fetch messages",
+      error: error.message
+    });
+  }
+};
+
 
 

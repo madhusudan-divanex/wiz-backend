@@ -38,6 +38,7 @@ const adminRoutes = require("./routes/admin.routes");
 const providerRoutes = require("./routes/provider.routes");
 const consumerRoutes = require("./routes/consumer.routes");
 const cmsRoutes = require("./routes/frontend.routes");
+const { deleteOrphanChats } = require("./controllers/user.controller");
 
 app.use("/uploads", express.static("uploads"));
 app.use("/api/auth", authRoutes);
@@ -81,7 +82,6 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ status: false, message: "Server Error" });
 });
-
 // ===== Socket.IO Logic =====
 let onlineUsers = {}; 
 io.on("connection", (socket) => {

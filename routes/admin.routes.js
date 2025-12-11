@@ -1,5 +1,5 @@
 const express = require('express');
-const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter, updateAdvertisement, getAvailableDates, getAllReferencesForAdmin } = require('../controllers/admin.controller');
+const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter, updateAdvertisement, getAvailableDates, getAllReferencesForAdmin, getAllChatsForAdmin, getChatData, trusedReferenceAction } = require('../controllers/admin.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { deleteMembership } = require('../controllers/admin.controller');
 const { updateMembership } = require('../controllers/admin.controller');
@@ -59,7 +59,7 @@ router.post('/report-action',authMiddleware, reportAction);
 router.get('/ads',authMiddleware, getAllAds);
 router.get('/trusted-reference',authMiddleware, getAllReferences);
 router.post('/ad-action',authMiddleware, adAction);
-router.post('/reference-action',authMiddleware, referenceAction);
+router.post('/trusted-reference-action',authMiddleware, trusedReferenceAction);
 router.post('/share-mic', shareMicWithUs);
 router.post('/feedback', feedbackQuery);
 router.post('/service-action',authMiddleware, serviceAction);
@@ -71,6 +71,9 @@ router.get('/occupied-dates', getAvailableDates);
 router.get('/get-add-reference',authMiddleware, getAllReferencesForAdmin);
 
 router.post('/reference-action',authMiddleware, referenceAction);
+router.get('/get-chats',authMiddleware, getAllChatsForAdmin);
+router.post('/get-chat-data',authMiddleware, getChatData);
+
 
 
 module.exports = router;

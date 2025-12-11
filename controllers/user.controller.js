@@ -224,6 +224,20 @@ exports.deleteUser = async (req, res) => {
       }
     }
     console.log("scamData", scamData)
+    const chatData = await Chat.find({
+      $or: [{ from: userId }, { to: userId }]
+    });
+
+    for (let data of chatData) {
+      if (data?.chatImg) {
+        safeUnlink(data.chatImg);
+      }
+    }
+
+    await Chat.deleteMany({
+      $or: [{ from: userId }, { to: userId }]
+    });
+
     await BuyMembership.deleteMany({ userId })
     await Login.deleteMany({ userId })
     await Otp.deleteMany({ userId })
@@ -890,17 +904,17 @@ exports.userViewProfile = async (req, res) => {
   }
 };
 exports.bookmarkProfile = async (req, res) => {
-  const { userId, bookmarkUser, trackerBookmark,blogBookmark } = req.body
+  const { userId, bookmarkUser, trackerBookmark, blogBookmark } = req.body
   try {
     if (userId == bookmarkUser) {
       return res.status(200).json({ success: true, });
     }
-    const isExist = await BookMarkProfile.findOne({ userId, bookmarkUser, trackerBookmark,blogBookmark  })
+    const isExist = await BookMarkProfile.findOne({ userId, bookmarkUser, trackerBookmark, blogBookmark })
     if (isExist) {
       await BookMarkProfile.findByIdAndDelete(isExist._id)
       return res.status(200).json({ success: true, });
     }
-    const contact = await BookMarkProfile.create({ userId, bookmarkUser, trackerBookmark,blogBookmark  });
+    const contact = await BookMarkProfile.create({ userId, bookmarkUser, trackerBookmark, blogBookmark });
     return res.status(200).json({ success: true, });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
@@ -924,7 +938,7 @@ exports.getBookmarkData = async (req, res) => {
       return res.status(200).json({ success: true, bookmarkData: bookmarks });
 
     }
-     else if (type == 'blog') {
+    else if (type == 'blog') {
       const bookmarks = await BookMarkProfile.find({ userId, blogBookmark: { $ne: null } })?.sort({ createdAt: -1 })
         .populate('blogBookmark').lean();
       return res.status(200).json({ success: true, bookmarkData: bookmarks });
@@ -1832,5 +1846,47 @@ exports.getLiveAd = async (req, res) => {
   } catch (err) {
     console.log(err)
     return res.status(400).json({ success: false, message: err.message });
+  }
+};
+exports.deleteOrphanChats = async (req, res) => {
+  try {
+    // 1️⃣ Get all user IDs that exist in User model
+    const existingUserIds = await User.find().distinct("_id");
+
+    // 2️⃣ Find all chats where from or to user does NOT exist
+    const orphanChats = await Chat.find({
+      $or: [
+        { from: { $nin: existingUserIds } },
+        { to: { $nin: existingUserIds } }
+      ]
+    });
+
+    // 3️⃣ Delete associated images
+    for (let chat of orphanChats) {
+      if (chat.chatImg) {
+        safeUnlink(chat.chatImg);
+      }
+    }
+
+    // 4️⃣ Delete orphan chat records
+    await Chat.deleteMany({
+      $or: [
+        { from: { $nin: existingUserIds } },
+        { to: { $nin: existingUserIds } }
+      ]
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Deleted orphan chat records successfully",
+      deletedCount: orphanChats.length
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Failed to delete orphan chat records",
+      error: error.message
+    });
   }
 };
