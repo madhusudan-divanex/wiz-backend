@@ -1,17 +1,19 @@
-const ProfileForm =  require("../models/Consumer/Profile");
-const PreferenceForm =  require("../models/Consumer/Preference");
-const StayUpdated =  require("../models/Consumer/StayUpdate");
-const BasketForm =  require("../models/Consumer/Basket");
-const ServiceForm =  require("../models/Consumer/Service");
+const ProfileForm = require("../models/Consumer/Profile");
+const PreferenceForm = require("../models/Consumer/Preference");
+const StayUpdated = require("../models/Consumer/StayUpdate");
+const BasketForm = require("../models/Consumer/Basket");
+const ServiceForm = require("../models/Consumer/Service");
 const User = require("../models/user.model");
 const safeUnlink = require("../utils/globalFuntion");
+const Chat = require("../models/Chat");
+const Basket = require("../models/Consumer/Basket");
 
 exports.createOrUpdateProfile = async (req, res) => {
   try {
     const { userId } = req.body;
     const data = req.body;
-    const user=await User.findById(userId)
-    if (!user) return res.status(200).json({message:"User not found",status:false})
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
 
     const updated = await ProfileForm.findOneAndUpdate(
       { userId },
@@ -37,10 +39,15 @@ exports.getProfileByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
     const form = await ProfileForm.findOne({ userId });
+    const chat = await Chat.find({ from: userId }).populate('to'); // assuming userId in Chat is receiver
+    // 🔹 Check if user has chatted with any provider
+    const isBasket=await Basket.exists({userId})
+    const allowEdit = chat.some(c => c.to?.role === "provider");
 
     return res.status(200).json({
       status: true,
       data: form,
+      allowEdit,isBasket
     });
   } catch (error) {
     console.error("Error fetching profile form:", error);
@@ -54,18 +61,18 @@ exports.createOrUpdateBasket = async (req, res) => {
   try {
     const { userId } = req.body;
     const data = req.body;
-    const user=await User.findById(userId)
-    if (!user) return res.status(200).json({message:"User not found",status:false})
-   
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
 
     const result = await BasketForm.findOneAndUpdate(
       { userId },
       data,
       { upsert: true, new: true }
     );
-  
-    const updated = result;            
-    const isNew = new Date(result.createdAt) !== new Date(result.updatedAt) ?false:true
+
+    const updated = result;
+    const isNew = new Date(result.createdAt) !== new Date(result.updatedAt) ? false : true
     return res.status(200).json({
       status: true,
       message: "Basket form saved successfully",
@@ -102,8 +109,8 @@ exports.createOrUpdateService = async (req, res) => {
   try {
     const { userId } = req.body;
     const data = req.body;
-    const user=await User.findById(userId)
-    if (!user) return res.status(200).json({message:"User not found",status:false})
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
 
     const updated = await ServiceForm.findOneAndUpdate(
       { userId },
@@ -145,8 +152,8 @@ exports.getServiceByUserId = async (req, res) => {
 exports.createOrUpdatePreference = async (req, res) => {
   try {
     const { userId } = req.body;
-    const user=await User.findById(userId)
-    if (!user) return res.status(200).json({message:"User not found",status:false})
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
     const data = req.body;
 
     const updated = await PreferenceForm.findOneAndUpdate(
@@ -190,18 +197,18 @@ exports.createOrUpdateStayUpdated = async (req, res) => {
   try {
     const { userId } = req.body;
     const data = req.body;
-    const user=await User.findById(userId)
-    if (!user) return res.status(200).json({message:"User not found",status:false})
-    const isExist=await StayUpdated.findOne({userId})
-    user.status='live'
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+    const isExist = await StayUpdated.findOne({ userId })
+    user.status = 'live'
     await user.save()
     const updated = await StayUpdated.findOneAndUpdate(
       { userId },
       data,
       { upsert: true, new: true }
     );
-    if(isExist){
-      user.status='pending'
+    if (isExist) {
+      user.status = 'pending'
       await user.save()
     }
 
@@ -241,14 +248,14 @@ exports.updateImage = async (req, res) => {
   const { userId } = req.body;
   const image = req.files?.['image']?.[0]?.path
   try {
-    const user=await User.findById(userId)
-    if (!user) return res.status(200).json({message:"User not found",status:false})
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
 
     const data = await ProfileForm.findOne({ userId });
-    if(data.image){
+    if (data.image) {
       safeUnlink(data.image)
     }
-    await ProfileForm.findByIdAndUpdate(data._id,{profileImage:image},{new:true})
+    await ProfileForm.findByIdAndUpdate(data._id, { profileImage: image }, { new: true })
 
     return res.status(200).json({
       status: true,

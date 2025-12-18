@@ -1,5 +1,5 @@
 const express = require('express');
-const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter, updateAdvertisement, getAvailableDates, getAllReferencesForAdmin, getAllChatsForAdmin, getChatData, trusedReferenceAction } = require('../controllers/admin.controller');
+const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter, updateAdvertisement, getAvailableDates, getAllReferencesForAdmin, getAllChatsForAdmin, getChatData, trusedReferenceAction, createScamType, getScamType, deleteScamType, updateScamType, createServiceCategory, getServiceCategory, updateServiceCategory, deleteServiceCategory, scamReportAction, basketAction, getWelcomeBasket } = require('../controllers/admin.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { deleteMembership } = require('../controllers/admin.controller');
 const { updateMembership } = require('../controllers/admin.controller');
@@ -56,6 +56,7 @@ router.post('/dispute-action',authMiddleware, disputeAction);
 
 router.post('/profile-action',authMiddleware, approveProfile);
 router.post('/report-action',authMiddleware, reportAction);
+router.post('/scam-report-action',authMiddleware, scamReportAction);
 router.get('/ads',authMiddleware, getAllAds);
 router.get('/trusted-reference',authMiddleware, getAllReferences);
 router.post('/ad-action',authMiddleware, adAction);
@@ -74,6 +75,18 @@ router.post('/reference-action',authMiddleware, referenceAction);
 router.get('/get-chats',authMiddleware, getAllChatsForAdmin);
 router.post('/get-chat-data',authMiddleware, getChatData);
 
+router.post('/scam-type',authMiddleware, createScamType);
+router.get('/scam-type', getScamType);
+router.put('/scam-type',authMiddleware, updateScamType);
+router.delete('/scam-type',authMiddleware, deleteScamType);
+
+router.post('/service-category',authMiddleware, createServiceCategory);
+router.get('/service-category', getServiceCategory);
+router.put('/service-category',authMiddleware, updateServiceCategory);
+router.delete('/service-category',authMiddleware, deleteServiceCategory);
+
+router.get('/welcome-basket',authMiddleware,getWelcomeBasket );
+router.post('/basket-action',authMiddleware, basketAction);
 
 
 module.exports = router;

@@ -39,6 +39,8 @@ const providerRoutes = require("./routes/provider.routes");
 const consumerRoutes = require("./routes/consumer.routes");
 const cmsRoutes = require("./routes/frontend.routes");
 const { deleteOrphanChats } = require("./controllers/user.controller");
+const ScamReport = require("./models/ScamReport");
+const { default: mongoose } = require("mongoose");
 
 app.use("/uploads", express.static("uploads"));
 app.use("/api/auth", authRoutes);

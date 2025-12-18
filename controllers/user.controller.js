@@ -175,8 +175,6 @@ exports.deleteUser = async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user)
       return res.status(404).json({ success: false, message: 'User not deleted' });
-    if (user.email == 'madhusudhandivanextechnologies@gmail.com' || user.email == 'madhusudanrathore722@gmail.com')
-      return res.status(200).json({ success: false, message: 'This is a test User' });
 
     const pvdProData = await ProviderProfile.findOne({ userId })
     if (pvdProData) {
@@ -337,27 +335,65 @@ exports.deleteUserWithReason = async (req, res) => {
     if (!user)
       return res.status(404).json({ success: false, message: 'User not deleted' });
 
-    const pvdProData = await ProviderProfile.findOne({ userId })
+     const pvdProData = await ProviderProfile.findOne({ userId })
     if (pvdProData) {
       safeUnlink(pvdProData?.avatar)
       safeUnlink(pvdProData?.bannerImage)
       safeUnlink(pvdProData?.profileImage)
-      safeUnlink(pvdProData?.videoIntro)
     }
-    const pvdAcdData = ProviderAccreditation.findOne({ userId })
+    console.log("pvdProData", pvdProData)
+    const pvdAcdData = await ProviderAccreditation.findOne({ userId })
     if (pvdAcdData) {
-      for (let data in pvdAcdData.licenses) {
+      for (let data of pvdAcdData.licenses) {
         safeUnlink(data?.tradeLicenseFile)
       }
     }
+    console.log("pvdAcdData", pvdAcdData)
 
     const mktData = await ProviderMarketing.findOne({ userId })
     if (mktData) {
       safeUnlink(mktData?.menu)
-      for (let data in mktData.thoughtLeadershipPortfolio) {
+      safeUnlink(mktData?.videoIntro)
+      for (let data of mktData.additionalSections) {
+        if (data?.type == 'gallery') {
+          for (let img of data?.galleryImages) {
+            safeUnlink(img)
+          }
+        }
+      }
+      for (let data of mktData.thoughtLeadershipPortfolio) {
         safeUnlink(data?.imageUrl)
       }
     }
+    console.log("mkdData", mktData)
+    const adData = await Advertisement.find({ userId })
+    if (adData.length > 0) {
+      for (let data of adData) {
+        safeUnlink(data?.image)
+      }
+    }
+    console.log("adData", adData)
+    const scamData = await ScamReport.find({ userId })
+    if (scamData.length > 0) {
+      for (let data of scamData) {
+        const isBookMark = await BookmarkModel.deleteMany({ trackerBookmark: data._id })
+        safeUnlink(data?.image)
+      }
+    }
+    console.log("scamData", scamData)
+    const chatData = await Chat.find({
+      $or: [{ from: userId }, { to: userId }]
+    });
+
+    for (let data of chatData) {
+      if (data?.chatImg) {
+        safeUnlink(data.chatImg);
+      }
+    }
+
+    await Chat.deleteMany({
+      $or: [{ from: userId }, { to: userId }]
+    });
 
     await BuyMembership.deleteMany({ userId })
     await Login.deleteMany({ userId })
@@ -365,7 +401,72 @@ exports.deleteUserWithReason = async (req, res) => {
     await ProviderFeature.findOneAndDelete({ userId })
     await ProviderAccreditation.findOneAndDelete({ userId })
     await ProviderProfile.findOneAndDelete({ userId })
+    await ProfileView.deleteMany({ userId })
+    await ProfileView.deleteMany({ viewUserId: userId })
     await ProviderMarketing.findOneAndDelete({ userId })
+    await BookMarkProfile.deleteMany({ bookmarkUser: userId })
+    await BookMarkProfile.deleteMany({ userId })
+    await RecommendedUser.deleteMany({ userId })
+    await RecommendedUser.deleteMany({ recommendedUser: userId })
+    await ScamReport.deleteMany({ userId })
+    await Advertisement.deleteMany({ userId })
+    await Reference.deleteMany({ userId })
+    await Reference.deleteMany({ referenceUser: userId })
+    await FeedBack.deleteMany({ userId })
+    await FeedBack.deleteMany({ feedbackUser: userId })
+    await OpenDispute.deleteMany({ userId })
+    await RequestBespoke.deleteMany({ userId })
+    await OpenDispute.deleteMany({ userId })
+    const disputeImage = await OpenDispute.find({ against: userId })
+    for (let d of disputeImage) {
+      safeUnlink(d.image)
+    }
+    await OpenDispute.deleteMany({ against: userId })
+    await ProviderFeature.updateMany(
+      { "connection.userId": userId },
+      { $pull: { connection: { userId } } }
+    );
+
+
+    const onPvdProData = await Profile.findOne({ userId })
+    if (onPvdProData) {
+      safeUnlink(onPvdProData?.avatar)
+      safeUnlink(onPvdProData?.bannerImage)
+      safeUnlink(onPvdProData?.profileImage)
+    }
+    const onPvdAcdData = await Accreditation.findOne({ userId })
+    if (onPvdAcdData) {
+      for (let data of onPvdAcdData.licenses) {
+        safeUnlink(data?.tradeLicenseFile)
+      }
+    }
+
+    const onMktData = await Marketing.findOne({ userId })
+    if (onMktData) {
+      safeUnlink(onMktData?.menu)
+      safeUnlink(onMktData?.videoIntro)
+      for (let data of onMktData.additionalSections) {
+        if (data?.type == 'gallery') {
+          for (let img of data?.galleryImages) {
+            safeUnlink(img)
+          }
+        }
+      }
+      for (let data of onMktData.thoughtLeadershipPortfolio) {
+        safeUnlink(data?.imageUrl)
+      }
+    }
+    await Feature.findOneAndDelete({ userId })
+    await Accreditation.findOneAndDelete({ userId })
+    await Profile.findOneAndDelete({ userId })
+    await Marketing.findOneAndDelete({ userId })
+    //    consumer data 
+    await ConsumerProfile.findOneAndDelete({ userId })
+    await BasketForm.findOneAndDelete({ userId })
+    await ServiceForm.findOneAndDelete({ userId })
+    await PreferenceForm.findOneAndDelete({ userId })
+    await StayUpdated.findOneAndDelete({ userId })
+    await User.findByIdAndDelete(userId)
     return res.status(200).json({ success: true, message: 'User deleted successfully' });
   } catch (err) {
     console.log(err)
@@ -447,10 +548,15 @@ exports.buyMembership = async (req, res) => {
           html = html.replace('{{member}}', finalName || '');
           html = html.replace('{{membership}}', findMembership?.name || '');
           await sendEmail({
-            to: email,
+            to: email||findUser.email,
             subject: 'Membership Confirmation',
             html
           });
+          if(findMembership.topChoice && membershipType === 'consumer'){
+            findUser.monthlyToken=5
+            findUser.tokenDate=new Date()
+            await findUser.save()
+          }
         }
         const isGold = findMembership.topChoice
         return res.status(200).json({ status: true, isGold, message: "Membership purchased" });
@@ -564,7 +670,7 @@ exports.userScamReport = async (req, res) => {
       return res.status(404).json({ message: "User not found", success: false });
     }
     const skip = (page - 1) * limit;
-    const allReport = await ScamReport.find({ userId })
+    const allReport = await ScamReport.find({ userId }).populate('scamType').populate('serviceCategory')
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -704,7 +810,7 @@ exports.purchaseHistory = async (req, res) => {
 
 exports.getScamReports = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', type = '', scamType = '' } = req.query;
+    const { page = 1, limit = 10, search = '', type = '', scamType = '',status } = req.query;
     const searchConditions = [];
     if (search) {
       searchConditions.push({
@@ -720,12 +826,18 @@ exports.getScamReports = async (req, res) => {
     if (type) {
       searchConditions.push({ format: type });
     }
+    if (status!=='all') {
+      searchConditions.push({ status: status });
+    }
     if (scamType) {
       searchConditions.push({ scamType });
     }
     const searchFilter = searchConditions.length > 0 ? { $and: searchConditions } : {};
     const totalScams = await ScamReport.countDocuments(searchFilter);
-    const scams = await ScamReport.find(searchFilter).sort({ createdAt: -1 })
+    const scams = await ScamReport.find(searchFilter)
+      .sort({ createdAt: -1 })
+      .populate("scamType")
+      .populate("serviceCategory")
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
     return res.status(200).json({
@@ -825,7 +937,7 @@ exports.searchProfile = async (req, res) => {
         { lastName: { $regex: word, $options: "i" } }
       ]
     }));
-    const query = { $and: regexConditions };
+    const query = { $and: regexConditions,onBoarding:false };
 
     // Add role condition if provided
     if (role !== '') {
@@ -1518,6 +1630,7 @@ exports.disputeQuery = async (req, res) => {
     const {
       message,
       subject,
+      tokenUsed,
       type,
       against,
       userId,
@@ -1543,6 +1656,16 @@ exports.disputeQuery = async (req, res) => {
       user.freeService -= 1;
       await user.save();
     }
+    if (tokenUsed) {
+      if (user.monthlyToken <= 0) {
+        return res.status(200).json({
+          success: false,
+          message: "No free services remaining"
+        });
+      }
+      user.monthlyToken -= 1;
+      await user.save();
+    }
     const data = {
       message,
       subject,
@@ -1553,7 +1676,7 @@ exports.disputeQuery = async (req, res) => {
       addOnPrice,
       addOnId,
       addOnType,
-      status: serviceUsed ? "pending" : "payment-pending"
+      status: (serviceUsed || tokenUsed) ? "pending" : "payment-pending"
     };
 
     const dispute = await OpenDispute.create(data);
@@ -1618,7 +1741,7 @@ exports.getDisputeQuery = async (req, res) => {
 };
 exports.bespokeRequestQuery = async (req, res) => {
   try {
-    const { userId, serviceUsed, ...rest } = req.body;
+    const { userId,tokenUsed, serviceUsed, ...rest } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -1635,11 +1758,21 @@ exports.bespokeRequestQuery = async (req, res) => {
       user.freeService -= 1;
       await user.save();
     }
+    if (tokenUsed) {
+      if (user.monthlyToken <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "No monthly token remaining"
+        });
+      }
+      user.monthlyToken -= 1;
+      await user.save();
+    }
 
     const data = {
       ...rest,
       userId,
-      status: serviceUsed ? "pending" : "payment-pending",
+      status: (serviceUsed || tokenUsed) ? "pending" : "payment-pending",
     };
 
     const request = await RequestBespoke.create(data);

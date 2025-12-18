@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema({
     approvedOn: Date,
     publishedOn: Date,
     freeService:{type:Number,default:0},
+    monthlyToken:{type:Number,default:0},
+    tokenDate:Date,
     onBoarding: { type: Boolean, default: false },
     referedBy: {
         type: mongoose.Schema.Types.ObjectId,

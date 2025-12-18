@@ -1,47 +1,49 @@
 const cron = require('node-cron');
 const mongoose = require('mongoose');
-const Membership = require('../models/buymembership.model'); // Adjust the path to your model
+const BuyMembership = require('../models/buymembership.model'); // Adjust the path to your model
+const Membership = require('../models/membership.model'); // Adjust the path to your model
 const User = require('../models/user.model');
 const ProviderAccreditation = require('../models/Provider/providerAccreditation.model');
 const OpenDispute = require('../models/OpenDispute');
 const safeUnlink = require('./globalFuntion');
 const Advertisement = require('../models/Provider/providerAdvertisement.model');
+const membershipModel = require('../models/membership.model');
 
 cron.schedule('0 1 * * *', async () => {
-    console.log('🔁 Cron Job Running: Checking expired memberships');
+  console.log('🔁 Cron Job Running: Checking expired memberships');
 
-    const today = new Date();
+  const today = new Date();
 
-    try {
-        const result = await Membership.updateMany(
-            {
-                endDate: { $lt: today },
-                status: 'active' // Only update active ones
-            },
-            {
-                $set: { status: 'expired' }
-            }
-        );
-        const newDate = new Date(today);
-        newDate.setHours(newDate.getHours() + 23);
+  try {
+    const result = await BuyMembership.updateMany(
+      {
+        endDate: { $lt: today },
+        status: 'active' // Only update active ones
+      },
+      {
+        $set: { status: 'expired' }
+      }
+    );
+    const newDate = new Date(today);
+    newDate.setHours(newDate.getHours() + 23);
 
-        const nextResult = await Membership.updateMany(
-            {
-                startDate: { $lte: newDate },
-                endDate: { $gte: newDate },
-                status: 'next' // Only update ones scheduled to start
-            },
-            {
-                $set: { status: 'active' }
-            }
-        );
+    const nextResult = await BuyMembership.updateMany(
+      {
+        startDate: { $lte: newDate },
+        endDate: { $gte: newDate },
+        status: 'next' // Only update ones scheduled to start
+      },
+      {
+        $set: { status: 'active' }
+      }
+    );
 
 
-        console.log(`✅ Cron Job Complete: ${result.modifiedCount} memberships marked as expired.`);
-        console.log(`✅ Cron Job Complete: ${nextResult.modifiedCount} memberships marked as active.`);
-    } catch (error) {
-        console.error('❌ Cron Job Error:', error);
-    }
+    console.log(`✅ Cron Job Complete: ${result.modifiedCount} memberships marked as expired.`);
+    console.log(`✅ Cron Job Complete: ${nextResult.modifiedCount} memberships marked as active.`);
+  } catch (error) {
+    console.error('❌ Cron Job Error:', error);
+  }
 });
 
 
@@ -78,21 +80,21 @@ cron.schedule('0 0 * * *', async () => {
 
 async function deleteOldPendingDisputes() {
   try {
-    const twelveHoursAgo = new Date(Date.now() - 1 * 60 * 60 * 1000); 
-    
+    const twelveHoursAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
+
     const disputesToDelete = await OpenDispute.find({
       status: 'payment-pending',
       createdAt: { $lt: twelveHoursAgo }
     });
-    
+
     if (disputesToDelete.length > 0) {
       for (let dispute of disputesToDelete) {
         if (dispute.image) {
-          await safeUnlink(dispute.image); 
+          await safeUnlink(dispute.image);
         }
 
         // Delete the dispute from the database
-        await Dispute.deleteOne({ _id: dispute._id });
+        await OpenDispute.deleteOne({ _id: dispute._id });
         console.log(`Deleted dispute with ID: ${dispute._id}`);
       }
     } else {
@@ -142,3 +144,110 @@ cron.schedule('0 0 * * *', async () => {
     console.error("❌ Error in ads cron job:", error.message);
   }
 });
+// For monthly token
+cron.schedule('0 0 * * *', async () => { // Runs every day at 00:00
+  try {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; // yyyy-mm-dd
+
+    // Get topChoice membership for providers
+    const membership = await Membership.findOne({ topChoice: true, type: 'consumer' });
+    if (!membership) {
+      console.log('No topChoice membership found');
+      return;
+    }
+
+    // Find all active users whose tokenDate is today and have bought this membership
+    const users = await User.find({
+      tokenDate: {
+        $exists: true,
+        $lte: today // tokenDate <= today
+      },
+      role: 'consumer'
+    });
+
+    const userIds = [];
+
+    for (const user of users) {
+      const hasMembership = await BuyMembership.findOne({
+        userId: user._id,
+        membershipId: membership._id,
+        status: 'active'
+      });
+      if (hasMembership) userIds.push(user._id);
+    }
+
+    if (userIds.length === 0) {
+      console.log('No users to reset tokens today');
+      return;
+    }
+    const result = await User.updateMany(
+      { _id: { $in: userIds } },
+      {
+        $set: {
+          monthlyToken: 5,
+          tokenDate: new Date()
+        }
+      }
+    );
+
+    console.log(`✅ Reset monthly tokens for ${result.modifiedCount} users`);
+
+  } catch (error) {
+    console.error('❌ Cron Job Error:', error);
+  }
+});
+
+// const testFun = async () => {
+//   try {
+//     const today = new Date();
+//     const todayStr = today.toISOString().split('T')[0]; // yyyy-mm-dd
+
+//     // Get topChoice membership for providers
+//     const membership = await Membership.findOne({ topChoice: true, type: 'consumer' });
+//     if (!membership) {
+//       console.log('No topChoice membership found');
+//       return;
+//     }
+
+//     // Find all active users whose tokenDate is today and have bought this membership
+//     const users = await User.find({
+//       tokenDate: {
+//         $exists: true,
+//         $lte: today // tokenDate <= today
+//       },
+//       role: 'consumer'
+//     });
+
+//     const userIds = [];
+
+//     for (const user of users) {
+//       const hasMembership = await BuyMembership.findOne({
+//         userId: user._id,
+//         membershipId: membership._id,
+//         status: 'active'
+//       });
+//       if (hasMembership) userIds.push(user._id);
+//     }
+
+//     if (userIds.length === 0) {
+//       console.log('No users to reset tokens today');
+//       return;
+//     }
+//     const result = await User.updateMany(
+//       { _id: { $in: userIds } },
+//       {
+//         $set: {
+//           monthlyToken: 5,
+//           tokenDate: new Date()
+//         }
+//       }
+//     );
+
+//     console.log(`✅ Reset monthly tokens for ${result.modifiedCount} users`);
+
+//   } catch (error) {
+//     console.error('❌ Cron Job Error:', error);
+//   }
+// }
+// testFun()

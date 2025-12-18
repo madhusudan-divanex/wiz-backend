@@ -13,6 +13,7 @@ const basketFormSchema = new mongoose.Schema(
     phone: { type: String, required: true },
     receiveGiftBox: { type: Boolean, default: false },
     expatStatus: { type: String },
+    status:{type:String,enum:['Requested','On the way','Delivered'],default:'Requested'},
   },
   { timestamps: true }
 );

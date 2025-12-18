@@ -12,7 +12,9 @@ const StayUpdate = require('../models/Consumer/StayUpdate');
 exports.signUpUser = async (req, res) => {
     const { firstName, lastName, email, contactNumber, password, role,referedBy } = req.body;
     try {
-        const data={firstName, lastName, email, contactNumber, password, role,}
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const data={firstName, lastName, email, contactNumber, password:hashedPassword, role,referedBy,status:role==='consumer'?'live':''}
         const isExist = await User.findOne({ email })
         if (isExist) {
             return res.status(200).json({ message: "User already exist", status: false })
@@ -24,7 +26,6 @@ exports.signUpUser = async (req, res) => {
             data.referedBy=referedBy
             data.freeService=1
         }
-        const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create user
         const newUser = await User.create(data);
@@ -61,6 +62,7 @@ exports.signInUser = async (req, res) => {
         if (!isExist) return res.status(200).json({ message: 'User not Found', status: false });
         const hashedPassword = isExist.password
         const isMatch = await bcrypt.compare(password, hashedPassword);
+        console.log(isMatch,password,hashedPassword)
         if (!isMatch) return res.status(200).json({ message: 'Invalid email or password', status: false });
         const code = generateOTP()
         const isOtpExist = await Otp.findOne({ userId: isExist._id })

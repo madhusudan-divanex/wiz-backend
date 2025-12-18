@@ -17,7 +17,7 @@ const bookmarkSchema=new Schema({
     },
     blogBookmark:{
         type:mongoose.Schema.Types.ObjectId,
-        ref:'blog',
+        ref:'Blog',
     }
 
 },{timestamps:true})

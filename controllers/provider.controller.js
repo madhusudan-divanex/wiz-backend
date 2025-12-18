@@ -12,6 +12,11 @@ const StayUpdate = require('../models/Provider/providerStayUpdate.model');
 const ServiceForm = require('../models/Provider/providerServices.model');
 const PreferenceForm = require('../models/Provider/providerBusinessPreference.model');
 const { default: mongoose } = require('mongoose');
+const ProfileViewModel = require('../models/ProfileView.model');
+const ProviderFeedbackModel = require('../models/Provider/providerFeedback.model');
+const { bookmarkProfile } = require('./user.controller');
+const BookmarkModel = require('../models/Bookmark.model');
+const RecommendationModel = require('../models/Recommendation.model');
 
 
 exports.createOrUpdateProfile = async (req, res) => {
@@ -939,3 +944,192 @@ exports.deleteImage = async (req, res) => {
     });
   }
 };
+exports.analyticData = async (req, res) => {
+  const userId = req.params.id;
+  const { duration } = req.query;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(200).json({ status: false, message: "User not found" });
+    }
+
+    let startDate = new Date();
+    let groupFormat = "%Y-%m";
+
+    switch (duration) {
+      case "12months":
+        startDate.setMonth(startDate.getMonth() - 11);
+        groupFormat = "%Y-%m"; // Month wise
+        break;
+
+      case "3months":
+        startDate.setMonth(startDate.getMonth() - 2);
+        groupFormat = "%Y-%m";
+        break;
+
+      case "30days":
+        startDate.setDate(startDate.getDate() - 29);
+        groupFormat = "%Y-%m-%d"; // Day wise
+        break;
+
+      case "7days":
+        startDate.setDate(startDate.getDate() - 6);
+        groupFormat = "%Y-%m-%d";
+        break;
+
+      case "24hours":
+        startDate.setHours(startDate.getHours() - 23);
+        groupFormat = "%Y-%m-%d %H:00"; // Hour wise
+        break;
+
+      default:
+        startDate.setMonth(startDate.getMonth() - 11);
+    }
+    let groupStage = {};
+    let projectStage = {};
+    let sortStage = {};
+
+    // duration-aware aggregation
+    if (duration === "24hours") {
+      groupStage = { _id: { hour: { $hour: "$createdAt" } }, count: { $sum: 1 } };
+      projectStage = { _id: 0, label: { $concat: [{ $toString: "$_id.hour" }, ":00"] }, count: 1 };
+      sortStage = { "_id.hour": 1 };
+    } else if (duration === "7days" || duration === "30days") {
+      groupStage = { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" }, day: { $dayOfMonth: "$createdAt" } }, count: { $sum: 1 } };
+      projectStage = {
+        _id: 0,
+        label: {
+          $dateToString: {
+            format: "%d %b",
+            date: { $dateFromParts: { year: "$_id.year", month: "$_id.month", day: "$_id.day" } }
+          }
+        },
+        count: 1
+      };
+      sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
+    } else {
+      // 3months / 12months
+      groupStage = { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }, count: { $sum: 1 } };
+      projectStage = {
+        _id: 0,
+        label: { $concat: [{ $arrayElemAt: [["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], "$_id.month"] }, " ", { $toString: "$_id.year" }] },
+        count: 1
+      };
+      sortStage = { "_id.year": 1, "_id.month": 1 };
+    }
+
+    const analytics = await ProfileViewModel.aggregate([
+      { $match: { viewUserId: new mongoose.Types.ObjectId(userId), createdAt: { $gte: startDate } } },
+      { $group: groupStage },
+      { $project: projectStage },
+      { $sort: sortStage }
+    ]);
+
+
+
+    const now = new Date();
+    const last24Hours = new Date(now);
+    last24Hours.setHours(last24Hours.getHours() - 24);
+    const totalAccountSearch = await ProfileViewModel.countDocuments({ viewUserId: userId, createdAt: { $lte: last24Hours } })
+    const previous24Hours = new Date(now);
+    previous24Hours.setHours(now.getHours() - 48);
+    const previousDayCount = await ProfileViewModel.countDocuments({
+      viewUserId: userId,
+      createdAt: {
+        $gte: previous24Hours,
+        $lt: last24Hours
+      }
+    });
+    let percentageChange = 100;
+
+    if (previousDayCount > 0) {
+      percentageChange = ((totalAccountSearch - previousDayCount) / previousDayCount) * 100;
+    }
+
+
+    const totalBookmarkData = await BookmarkModel.countDocuments({ bookmarkUser: userId })
+    const totalRecommendationData = await RecommendationModel.countDocuments({ recommendedUser: userId })
+
+
+    const avgRatingData = await ProviderFeedbackModel.aggregate([
+      {
+        $match: {
+          feedbackUser: new mongoose.Types.ObjectId(userId)
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: "$rating" },
+          totalReviews: { $sum: 1 }
+        }
+      }
+    ]);
+    const { labels, counts } = generateEmptyLabels(startDate, duration);
+
+    // Fill counts from analytics
+    analytics.forEach(item => {
+      const index = labels.indexOf(item.label);
+      if (index !== -1) counts[index] = item.count;
+    });
+
+    const finalAnalytics = labels.map((label, i) => ({ label, count: counts[i] }));
+
+    return res.status(200).json({
+      success: true,
+      message: "Analytics data fetched",
+      analytics: finalAnalytics, totalAccountSearch, avgRatingData: avgRatingData[0].averageRating, percentageChange, totalBookmarkData, totalRecommendationData
+    });
+
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
+};
+// Helper: Generate labels with zero counts
+function generateEmptyLabels(startDate, duration) {
+  const labels = [];
+  const counts = [];
+
+  const now = new Date();
+  const current = new Date(startDate);
+
+  if (duration === "24hours") {
+    for (let i = 0; i < 24; i++) {
+      const hourDate = new Date(current);
+      hourDate.setHours(current.getHours() + i);
+      const hour = hourDate.toLocaleString("en-US", { hour: "2-digit", hour12: false, timeZone: "Asia/Kolkata" });
+      labels.push(`${hour}:00`);
+      counts.push(0);
+    }
+  } else if (duration === "7days" || duration === "30days") {
+    while (current <= now) {
+      const label = current.toLocaleDateString("en-US", { 
+        day: "2-digit", 
+        month: "short", 
+        timeZone: "Asia/Kolkata" 
+      }); // e.g., 01 Dec
+      labels.push(label);
+      counts.push(0);
+      current.setDate(current.getDate() + 1);
+    }
+  } else if (duration === "3months" || duration === "12months") {
+    while (current <= now) {
+      const label = current.toLocaleString("en-US", { 
+        month: "long", 
+        year: "numeric", 
+        timeZone: "Asia/Kolkata" 
+      }); // e.g., December 2025
+      labels.push(label);
+      counts.push(0);
+      current.setMonth(current.getMonth() + 1);
+    }
+  }
+
+  return { labels, counts };
+}
+

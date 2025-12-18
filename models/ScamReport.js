@@ -8,12 +8,19 @@ const reportSchema=new Schema({
     description:String,
     dateReported:Date,
     format:String,
-    scamType:String,
-    serviceCategory:String,
+    scamType:{
+        type: mongoose.Schema.Types.ObjectId, ref: "ScamType",
+        required:true
+    },
+    serviceCategory:{
+        type: mongoose.Schema.Types.ObjectId, ref: "ServiceCategory",
+        required:true
+    },
     amountOfLost:String,
     name:String,
     reportToAuthoritise:Boolean,
     reportedToWhom:String,
+    severity :Number,
     image:String,
     status:{type:String,enum:['pending','live','declined'],default:'pending'}
 
