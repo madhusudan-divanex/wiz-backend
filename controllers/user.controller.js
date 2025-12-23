@@ -38,6 +38,7 @@ const OpenDispute = require('../models/OpenDispute');
 const RequestBespoke = require('../models/RequestBespoke');
 const NewsLetter = require('../models/NewsLetter');
 const BookmarkModel = require('../models/Bookmark.model');
+const ConsumerReferences = require('../models/Consumer/ConsumerReferences');
 
 // ✅ CREATE
 exports.createUseradmin = async (req, res) => {
@@ -237,6 +238,7 @@ exports.deleteUser = async (req, res) => {
     });
 
     await BuyMembership.deleteMany({ userId })
+    await ConsumerReferences.deleteMany({userId})
     await Login.deleteMany({ userId })
     await Otp.deleteMany({ userId })
     await ProviderFeature.findOneAndDelete({ userId })
@@ -255,7 +257,6 @@ exports.deleteUser = async (req, res) => {
     await Reference.deleteMany({ referenceUser: userId })
     await FeedBack.deleteMany({ userId })
     await FeedBack.deleteMany({ feedbackUser: userId })
-    await OpenDispute.deleteMany({ userId })
     await RequestBespoke.deleteMany({ userId })
     await OpenDispute.deleteMany({ userId })
     const disputeImage = await OpenDispute.find({ against: userId })
@@ -335,7 +336,7 @@ exports.deleteUserWithReason = async (req, res) => {
     if (!user)
       return res.status(404).json({ success: false, message: 'User not deleted' });
 
-     const pvdProData = await ProviderProfile.findOne({ userId })
+    const pvdProData = await ProviderProfile.findOne({ userId })
     if (pvdProData) {
       safeUnlink(pvdProData?.avatar)
       safeUnlink(pvdProData?.bannerImage)
@@ -414,7 +415,6 @@ exports.deleteUserWithReason = async (req, res) => {
     await Reference.deleteMany({ referenceUser: userId })
     await FeedBack.deleteMany({ userId })
     await FeedBack.deleteMany({ feedbackUser: userId })
-    await OpenDispute.deleteMany({ userId })
     await RequestBespoke.deleteMany({ userId })
     await OpenDispute.deleteMany({ userId })
     const disputeImage = await OpenDispute.find({ against: userId })
@@ -548,13 +548,13 @@ exports.buyMembership = async (req, res) => {
           html = html.replace('{{member}}', finalName || '');
           html = html.replace('{{membership}}', findMembership?.name || '');
           await sendEmail({
-            to: email||findUser.email,
+            to: email || findUser.email,
             subject: 'Membership Confirmation',
             html
           });
-          if(findMembership.topChoice && membershipType === 'consumer'){
-            findUser.monthlyToken=5
-            findUser.tokenDate=new Date()
+          if (findMembership.topChoice && membershipType === 'consumer') {
+            findUser.monthlyToken = 5
+            findUser.tokenDate = new Date()
             await findUser.save()
           }
         }
@@ -810,7 +810,7 @@ exports.purchaseHistory = async (req, res) => {
 
 exports.getScamReports = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', type = '', scamType = '',status } = req.query;
+    const { page = 1, limit = 10, search = '', type = '', scamType = '', status } = req.query;
     const searchConditions = [];
     if (search) {
       searchConditions.push({
@@ -826,7 +826,7 @@ exports.getScamReports = async (req, res) => {
     if (type) {
       searchConditions.push({ format: type });
     }
-    if (status!=='all') {
+    if (status !== 'all') {
       searchConditions.push({ status: status });
     }
     if (scamType) {
@@ -937,7 +937,7 @@ exports.searchProfile = async (req, res) => {
         { lastName: { $regex: word, $options: "i" } }
       ]
     }));
-    const query = { $and: regexConditions,onBoarding:false };
+    const query = { $and: regexConditions, onBoarding: false };
 
     // Add role condition if provided
     if (role !== '') {
@@ -974,12 +974,7 @@ exports.viewProfile = async (req, res) => {
   try {
     if (userId == viewUserId) {
       return res.status(200).json({ success: true, });
-    }
-    const isExist = await ProfileView.findOne({ userId, viewUserId })
-    if (isExist) {
-      const contact = await ProfileView.findByIdAndUpdate(isExist._id, { userId, viewUserId }, { new: true });
-      return res.status(200).json({ success: true, });
-    }
+    }   
     const contact = await ProfileView.create({ userId, viewUserId });
     return res.status(200).json({ success: true, });
   } catch (err) {
@@ -1278,6 +1273,9 @@ exports.giveFeedback = async (req, res) => {
   try {
     const isExist = await User.findById(userId)
     if (!isExist) return res.status(200).json({ message: "User not found", status: false })
+    const isFeedback = await FeedBack.findOne({userId})
+    if (isFeedback) return res.status(200).json({ message: "Already exist", status: false })
+
     const newFeedback = await FeedBack.create({ userId, title, rating, feedback, feedbackUser });
     return res.status(200).json({ status: true, message: 'Feedback created successfully', data: newFeedback });
   } catch (error) {
@@ -1443,11 +1441,18 @@ exports.myChats = async (req, res) => {
           ]
         }).sort({ createdAt: -1 }); // Sort by most recent message
         const profile = user.role === 'consumer' ? await ConsumerProfile.findOne({ userId: user._id }) : await ProviderProfile.findOne({ userId: user._id })
-
+console.log(lastMessage)
         return {
           user,
+          _id: lastMessage ? lastMessage._id : null,
           lastMessage: lastMessage ? lastMessage.text ? lastMessage?.text : 'image' : 'No messages yet',
           createdAt: lastMessage ? lastMessage.createdAt : null,
+          isUnRead: !!(
+            lastMessage &&
+            lastMessage.to.toString() === userId &&
+            !lastMessage.read
+          ),
+
           profile
         };
       })
@@ -1672,6 +1677,8 @@ exports.disputeQuery = async (req, res) => {
       type,
       against,
       userId,
+      serviceUsed,
+      tokenUsed,
       image,
       addOnPrice,
       addOnId,
@@ -1741,7 +1748,7 @@ exports.getDisputeQuery = async (req, res) => {
 };
 exports.bespokeRequestQuery = async (req, res) => {
   try {
-    const { userId,tokenUsed, serviceUsed, ...rest } = req.body;
+    const { userId, tokenUsed, serviceUsed, ...rest } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -1772,6 +1779,8 @@ exports.bespokeRequestQuery = async (req, res) => {
     const data = {
       ...rest,
       userId,
+      serviceUsed,
+      tokenUsed,
       status: (serviceUsed || tokenUsed) ? "pending" : "payment-pending",
     };
 
@@ -1827,7 +1836,7 @@ exports.getRequestServiceQuery = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
     const totalCount = await RequestBespoke.countDocuments(filter);
-    const bespokeData = await RequestBespoke.find(filter)
+    const bespokeData = await RequestBespoke.find(filter).populate('businessCategory')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -2020,6 +2029,31 @@ exports.deleteOrphanChats = async (req, res) => {
       status: false,
       message: "Failed to delete orphan chat records",
       error: error.message
+    });
+  }
+};
+exports.readMessage = async (req, res) => {
+  const { chatId, from } = req.body;
+
+  try {
+    const chat = await Chat.findOneAndUpdate(
+      { _id: chatId, from },      // make sure this matches your schema
+      { $set: { read: true } },
+      { new: true }
+    );
+
+    if (!chat) {
+      return res.status(200).json({
+        success: false,
+        message: "Chat not found or not authorized",
+      });
+    }
+
+    return res.status(200).json({ success: true, chat });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
     });
   }
 };

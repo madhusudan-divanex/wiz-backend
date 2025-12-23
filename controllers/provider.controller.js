@@ -17,8 +17,11 @@ const ProviderFeedbackModel = require('../models/Provider/providerFeedback.model
 const { bookmarkProfile } = require('./user.controller');
 const BookmarkModel = require('../models/Bookmark.model');
 const RecommendationModel = require('../models/Recommendation.model');
-
-
+const IndividualProfile = require('../models/Provider/individualProfile.model');
+const BusinessProfile = require('../models/Provider/businessProfile.model');
+const BuyMembership = require('../models/buymembership.model')
+const ConsumerProfile = require('../models/Consumer/Profile');
+const Basket = require('../models/Consumer/Basket');
 exports.createOrUpdateProfile = async (req, res) => {
   try {
     const {
@@ -946,7 +949,7 @@ exports.deleteImage = async (req, res) => {
 };
 exports.analyticData = async (req, res) => {
   const userId = req.params.id;
-  const { duration } = req.query;
+  const { duration, ageDuration } = req.query;
 
   try {
     const user = await User.findById(userId);
@@ -1075,18 +1078,379 @@ exports.analyticData = async (req, res) => {
     });
 
     const finalAnalytics = labels.map((label, i) => ({ label, count: counts[i] }));
+    const membershipData = await BuyMembership.findOne({ status: 'active', userId }).sort({ createdAt: -1 }).populate('membershipId') || null
+    const isTopChoice = membershipData?.membershipId?.topChoice
 
-    return res.status(200).json({
-      success: true,
-      message: "Analytics data fetched",
-      analytics: finalAnalytics, totalAccountSearch, avgRatingData: avgRatingData[0].averageRating, percentageChange, totalBookmarkData, totalRecommendationData
-    });
+    if (!isTopChoice) {
+      return res.status(200).json({
+        success: true,
+        message: "Analytics data fetched",
+        analytics: finalAnalytics, totalAccountSearch, avgRatingData: avgRatingData[0].averageRating, percentageChange, totalBookmarkData, totalRecommendationData
+      });
+    } else {
+      let startDate = new Date();
+      let groupFormat = "%Y-%m";
+      switch (ageDuration) {
+        case "12months":
+          startDate.setMonth(startDate.getMonth() - 11);
+          groupFormat = "%Y-%m"; // Month wise
+          break;
+
+        case "3months":
+          startDate.setMonth(startDate.getMonth() - 2);
+          groupFormat = "%Y-%m";
+          break;
+
+        case "30days":
+          startDate.setDate(startDate.getDate() - 29);
+          groupFormat = "%Y-%m-%d"; // Day wise
+          break;
+
+        case "7days":
+          startDate.setDate(startDate.getDate() - 6);
+          groupFormat = "%Y-%m-%d";
+          break;
+
+        case "24hours":
+          startDate.setHours(startDate.getHours() - 23);
+          groupFormat = "%Y-%m-%d %H:00"; // Hour wise
+          break;
+
+        default:
+          startDate.setMonth(startDate.getMonth() - 11);
+      }
+      let groupStage = {};
+      let projectStage = {};
+      let sortStage = {};
+
+      // duration-aware aggregation
+      if (duration === "24hours") {
+        groupStage = { _id: { hour: { $hour: "$createdAt" } }, count: { $sum: 1 } };
+        projectStage = { _id: 0, label: { $concat: [{ $toString: "$_id.hour" }, ":00"] }, count: 1 };
+        sortStage = { "_id.hour": 1 };
+      } else if (duration === "7days" || duration === "30days") {
+        groupStage = { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" }, day: { $dayOfMonth: "$createdAt" } }, count: { $sum: 1 } };
+        projectStage = {
+          _id: 0,
+          label: {
+            $dateToString: {
+              format: "%d %b",
+              date: { $dateFromParts: { year: "$_id.year", month: "$_id.month", day: "$_id.day" } }
+            }
+          },
+          count: 1
+        };
+        sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
+      } else {
+        // 3months / 12months
+        groupStage = { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }, count: { $sum: 1 } };
+        projectStage = {
+          _id: 0,
+          label: { $concat: [{ $arrayElemAt: [["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], "$_id.month"] }, " ", { $toString: "$_id.year" }] },
+          count: 1
+        };
+        sortStage = { "_id.year": 1, "_id.month": 1 };
+      }
+      const viewData = await ProfileViewModel.find({ viewUserId: userId, createdAt: { $gte: startDate } }).populate('userId')
+      const consumerIds = viewData
+        ?.filter(item => item?.userId?.role === 'consumer')
+        .map(item => item?.userId?._id);
+      const providerIds = viewData
+        ?.filter(item => item?.userId?.role === 'provider')
+        .map(item => item?.userId?._id);
+      const consumerGenderCount = await ConsumerProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: consumerIds },
+            gender: { $in: ["male", "female"] }
+          }
+        },
+        {
+          $group: {
+            _id: "$gender",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const consumerAgeCount = await ConsumerProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: consumerIds },
+            age: { $nin: [null, "null", ""] },
+          }
+        },
+        {
+          $group: {
+            _id: "$age", // "25-34"
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const providerGenderCount = await IndividualProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: providerIds },
+            gender: { $in: ["male", "female"] }
+          }
+        },
+        {
+          $group: {
+            _id: "$gender",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const providerAgeCount = await IndividualProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: providerIds },
+            age: { $nin: [null, "null", ""] }
+          }
+        },
+        {
+          $group: {
+            _id: "$age",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const genderMap = {};
+
+      // consumer add
+      consumerGenderCount.forEach(item => {
+        genderMap[item._id] = (genderMap[item._id] || 0) + item.count;
+      });
+
+      // provider add
+      providerGenderCount.forEach(item => {
+        genderMap[item._id] = (genderMap[item._id] || 0) + item.count;
+      });
+      const total = Object.values(genderMap).reduce((a, b) => a + b, 0);
+      const genderPercentage = Object.entries(genderMap).map(
+        ([gender, count]) => ({
+          gender,
+          percentage: Number(((count / total) * 100).toFixed(1))
+        })
+      );
+      const ageMap = {};
+
+      // consumer add
+      consumerAgeCount.forEach(item => {
+        ageMap[item._id] = (ageMap[item._id] || 0) + item.count;
+      });
+
+      // provider add
+      providerAgeCount.forEach(item => {
+        ageMap[item._id] = (ageMap[item._id] || 0) + item.count;
+      });
+      const ageBarData = Object.entries(ageMap)
+        .map(([ageRange, count]) => ({
+          ageRange,
+          count
+        }))
+        .sort((a, b) => a.ageRange.localeCompare(b.ageRange));
+
+      const viewEmiData = await ProfileViewModel.find({ viewUserId: userId, createdAt: { $gte: startDate } }).populate('userId')
+      const consumerEmiIds = viewEmiData
+        ?.filter(item => item?.userId?.role === 'consumer')
+        .map(item => item?.userId?._id);
+      const providerEmiIds = viewEmiData
+        ?.filter(item => item?.userId?.role === 'provider')
+        .map(item => item?.userId?._id);
+      const consumerEmirateCount = await Basket.aggregate([
+        {
+          $match: {
+            userId: { $in: consumerEmiIds },
+            emirate: { $nin: [null, "null", ""] },
+
+            // emirate: { $in: ["male", "female"] }
+          }
+        },
+        {
+          $group: {
+            _id: "$emirate",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const providerEmirateCount = await BusinessProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: providerEmiIds },
+            emirate: { $nin: [null, "null", ""] },
+          }
+        },
+        {
+          $group: {
+            _id: "$emirate", // "25-34"
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const emirateMap = {};
+
+      // consumer add
+      consumerEmirateCount.forEach(item => {
+        emirateMap[item._id] = (emirateMap[item._id] || 0) + item.count;
+      });
+
+      // provider add
+      providerEmirateCount.forEach(item => {
+        emirateMap[item._id] = (emirateMap[item._id] || 0) + item.count;
+      });
+      const emirateBarData = Object.entries(emirateMap)
+        .map(([emirate, count]) => ({
+          emirate,
+          count
+        }))
+        .sort((a, b) => a.emirate.localeCompare(b.emirate));
+
+       const consumerVisaCount = await Basket.aggregate([
+        {
+          $match: {
+            userId: { $in: consumerEmiIds },
+            visaStatus: { $nin: [null, "null", ""] },
+
+            // emirate: { $in: ["male", "female"] }
+          }
+        },
+        {
+          $group: {
+            _id: "$emirate",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const providerVisaCount = await IndividualProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: providerEmiIds },
+            visaStatus: { $nin: [null, "null", ""] },
+          }
+        },
+        {
+          $group: {
+            _id: "$visaStatus", // "25-34"
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const visaMap = {};
+
+      // consumer add
+      consumerVisaCount.forEach(item => {
+        visaMap[item._id] = (visaMap[item._id] || 0) + item.count;
+      });
+
+      // provider add
+      providerVisaCount.forEach(item => {
+        visaMap[item._id] = (visaMap[item._id] || 0) + item.count;
+      });
+      const visaBarData = Object.entries(visaMap)
+        .map(([visaStatus, count]) => ({
+          visaStatus,
+          count
+        }))
+        .sort((a, b) => a.visaStatus.localeCompare(b.visaStatus));
+
+      return res.status(200).json({
+        success: true,
+        message: "Analytics data fetched",
+        analytics: finalAnalytics, genderPercentage, emirateBarData,visaBarData, ageBarData, totalAccountSearch, avgRatingData: avgRatingData[0].averageRating, percentageChange, totalBookmarkData, totalRecommendationData
+      });
+    }
 
   } catch (error) {
     console.log(error)
     return res.status(500).json({
       success: false,
       message: "Internal Server Error"
+    });
+  }
+};
+exports.individualProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.body.userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await IndividualProfile.findOne({ userId: req.body.userId });
+    if (data) {
+      await IndividualProfile.findByIdAndUpdate(data._id, req.body, { new: true })
+    } else {
+      await IndividualProfile.create(req.body)
+    }
+    return res.status(200).json({
+      status: true,
+      message: "Individual Profile updated successfully",
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.getIndividualProfile = async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await IndividualProfile.findOne({ userId });
+    if (data) {
+      return res.status(200).json({ message: "Profile data fetched", data, status: true })
+    } else {
+      return res.status(200).json({ message: "Profile not found", status: false })
+
+    }
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.businessProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.body.userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await BusinessProfile.findOne({ userId: req.body.userId });
+    if (data) {
+      await BusinessProfile.findByIdAndUpdate(data._id, req.body, { new: true })
+    } else {
+      await BusinessProfile.create(req.body)
+    }
+    return res.status(200).json({
+      status: true,
+      message: "Business Profile updated successfully",
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.getBusinessProfile = async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await BusinessProfile.findOne({ userId });
+    if (data) {
+      return res.status(200).json({ message: "Profile data updated", status: true, data })
+    } else {
+      return res.status(200).json({ message: "Profile not found", status: false })
+
+    }
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
     });
   }
 };
@@ -1108,10 +1472,10 @@ function generateEmptyLabels(startDate, duration) {
     }
   } else if (duration === "7days" || duration === "30days") {
     while (current <= now) {
-      const label = current.toLocaleDateString("en-US", { 
-        day: "2-digit", 
-        month: "short", 
-        timeZone: "Asia/Kolkata" 
+      const label = current.toLocaleDateString("en-US", {
+        day: "2-digit",
+        month: "short",
+        timeZone: "Asia/Kolkata"
       }); // e.g., 01 Dec
       labels.push(label);
       counts.push(0);
@@ -1119,10 +1483,10 @@ function generateEmptyLabels(startDate, duration) {
     }
   } else if (duration === "3months" || duration === "12months") {
     while (current <= now) {
-      const label = current.toLocaleString("en-US", { 
-        month: "long", 
-        year: "numeric", 
-        timeZone: "Asia/Kolkata" 
+      const label = current.toLocaleString("en-US", {
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Kolkata"
       }); // e.g., December 2025
       labels.push(label);
       counts.push(0);

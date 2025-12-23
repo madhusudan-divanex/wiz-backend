@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true },
     contactNumber: { type: String, required: true },
     password: { type: String, required: true },
-    status: { type: String, enum: ['pending', 'live', 'block', 'draft', 'cdraft', 'tdraft', ""], default: '' },
+    status: { type: String, enum: ['pending', 'live', 'block', 'draft', 'choicedraft', 'tradedraft', ""], default: '' },
     role: { type: String, enum: ['consumer', 'provider'], required: true },
     approvedOn: Date,
     publishedOn: Date,

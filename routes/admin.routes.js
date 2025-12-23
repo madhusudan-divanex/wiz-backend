@@ -1,5 +1,5 @@
 const express = require('express');
-const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter, updateAdvertisement, getAvailableDates, getAllReferencesForAdmin, getAllChatsForAdmin, getChatData, trusedReferenceAction, createScamType, getScamType, deleteScamType, updateScamType, createServiceCategory, getServiceCategory, updateServiceCategory, deleteServiceCategory, scamReportAction, basketAction, getWelcomeBasket } = require('../controllers/admin.controller');
+const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter, updateAdvertisement, getAvailableDates, getAllReferencesForAdmin, getAllChatsForAdmin, getChatData, trusedReferenceAction, createScamType, getScamType, deleteScamType, updateScamType, createServiceCategory, getServiceCategory, updateServiceCategory, deleteServiceCategory, scamReportAction, basketAction, getWelcomeBasket, getConsumerReferences, consumerReferenceAction } = require('../controllers/admin.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { deleteMembership } = require('../controllers/admin.controller');
 const { updateMembership } = require('../controllers/admin.controller');
@@ -59,6 +59,8 @@ router.post('/report-action',authMiddleware, reportAction);
 router.post('/scam-report-action',authMiddleware, scamReportAction);
 router.get('/ads',authMiddleware, getAllAds);
 router.get('/trusted-reference',authMiddleware, getAllReferences);
+router.get('/consumer-reference',authMiddleware, getConsumerReferences);
+router.post('/consumer-reference-action',authMiddleware, consumerReferenceAction);
 router.post('/ad-action',authMiddleware, adAction);
 router.post('/trusted-reference-action',authMiddleware, trusedReferenceAction);
 router.post('/share-mic', shareMicWithUs);
@@ -68,7 +70,7 @@ router.get('/newsletter', newsLetter);
 router.post('/advertisement',uploader.fields([
     { name: 'image', maxCount: 1 },
   ]),authMiddleware, updateAdvertisement);
-router.get('/occupied-dates', getAvailableDates);
+router.get('/occupied-dates/:spot', getAvailableDates);
 router.get('/get-add-reference',authMiddleware, getAllReferencesForAdmin);
 
 router.post('/reference-action',authMiddleware, referenceAction);

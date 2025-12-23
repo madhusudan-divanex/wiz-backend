@@ -12,6 +12,7 @@ const chatSchema=new Schema({
         required:true
     },
     text:{type:String},
-    chatImg:String
+    chatImg:String,
+    read:{type:Boolean,default:false}
 },{timestamps:true})
 module.exports=mongoose.model('chat',chatSchema)

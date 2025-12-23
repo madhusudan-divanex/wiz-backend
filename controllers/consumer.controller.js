@@ -7,6 +7,7 @@ const User = require("../models/user.model");
 const safeUnlink = require("../utils/globalFuntion");
 const Chat = require("../models/Chat");
 const Basket = require("../models/Consumer/Basket");
+const ConsumerReferences = require("../models/Consumer/ConsumerReferences");
 
 exports.createOrUpdateProfile = async (req, res) => {
   try {
@@ -41,13 +42,13 @@ exports.getProfileByUserId = async (req, res) => {
     const form = await ProfileForm.findOne({ userId });
     const chat = await Chat.find({ from: userId }).populate('to'); // assuming userId in Chat is receiver
     // 🔹 Check if user has chatted with any provider
-    const isBasket=await Basket.exists({userId})
+    const isBasket = await Basket.exists({ userId })
     const allowEdit = chat.some(c => c.to?.role === "provider");
 
     return res.status(200).json({
       status: true,
       data: form,
-      allowEdit,isBasket
+      allowEdit, isBasket
     });
   } catch (error) {
     console.error("Error fetching profile form:", error);
@@ -252,11 +253,14 @@ exports.updateImage = async (req, res) => {
     if (!user) return res.status(200).json({ message: "User not found", status: false })
 
     const data = await ProfileForm.findOne({ userId });
-    if (data.image) {
-      safeUnlink(data.image)
+    if (data &&data?.profileImage) {
+      safeUnlink(data.profileImage)
     }
-    await ProfileForm.findByIdAndUpdate(data._id, { profileImage: image }, { new: true })
-
+    if(data){
+      await ProfileForm.findByIdAndUpdate(data._id, { profileImage: image }, { new: true })
+    } else {
+      await ProfileForm.create({ userId, profileImage: image, firstName: user.firstName, lastName: user.lastName, email: user.email })
+    }
     return res.status(200).json({
       status: true,
       message: "Profile image saved successfully",
@@ -267,5 +271,90 @@ exports.updateImage = async (req, res) => {
       status: false,
       message: "Internal Server Error",
     });
+  }
+};
+exports.addReference = async (req, res) => {
+  const { userId, } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res
+      .status(200)
+      .json({ message: "User not found", status: false, });
+
+    await ConsumerReferences.create(req.body)
+    return res
+      .status(200)
+      .json({ message: "Reference add", status: true, });
+  } catch (error) {
+    console.error("Error updating reference:", error);
+    return res.status(500).json({ message: "Server Error", status: false });
+  }
+};
+exports.getReference = async (req, res) => {
+  const userId = req.params.id;
+
+  // Convert query params to numbers
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+        status: false,
+      });
+    }
+
+    const references = await ConsumerReferences.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .skip((page - 1) * limit);
+
+    const total = await ConsumerReferences.countDocuments({ userId });
+
+    return res.status(200).json({
+      message: "References fetched successfully",
+      status: true,
+      data: references,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching references:", error);
+    return res.status(500).json({
+      message: "Server Error",
+      status: false,
+    });
+  }
+};
+
+exports.removeReference = async (req, res) => {
+  const { userId, referenceId } = req.body; // or req.params if you send it via URL
+
+  try {
+    const user = await User.findById(userId);
+    if (!user)
+      return res.status(404).json({ message: "User not found", status: false });
+
+    const consumer = await ConsumerReferences.findById(referenceId);
+
+    if (!consumer) {
+      return res.status(200).json({ message: "Not Found", status: false })
+    }
+    await ConsumerReferences.findByIdAndDelete(referenceId)
+
+    return res.status(200).json({
+      message: "Reference removed successfully",
+      status: true,
+    });
+  } catch (error) {
+    console.error("Error removing reference:", error);
+    return res.status(500).json({ message: "Server Error", status: false });
   }
 };

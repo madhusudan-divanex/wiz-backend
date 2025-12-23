@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createOrUpdateProfile,getProfileByUserId, addMarketing, createFeatures, getFeaturesByUserId, getAccerditationByUserId, getMarketingByUserId, createAccerditation, createAd, getAllAds, getAdById, updateAd, deleteAd, addTrustedReference, getTrustedReference, addReference, removeReference, createOrUpdateStayUpdated, getStayUpdatedByUserId, createOrUpdateService, getServiceByUserId, createOrUpdatePreference, getPreferenceByUserId, updateImage, deleteImage, analyticData } = require('../controllers/provider.controller');
+const { createOrUpdateProfile,getProfileByUserId, addMarketing, createFeatures, getFeaturesByUserId, getAccerditationByUserId, getMarketingByUserId, createAccerditation, createAd, getAllAds, getAdById, updateAd, deleteAd, addTrustedReference, getTrustedReference, addReference, removeReference, createOrUpdateStayUpdated, getStayUpdatedByUserId, createOrUpdateService, getServiceByUserId, createOrUpdatePreference, getPreferenceByUserId, updateImage, deleteImage, analyticData, individualProfile, getIndividualProfile, businessProfile, getBusinessProfile } = require('../controllers/provider.controller');
 const getUploader = require('../config/multerConfig');
 const authMiddleware = require('../middlewares/auth.middleware');
 const uploader = getUploader('provider');
@@ -66,5 +66,11 @@ router.post('/add-reference',authMiddleware,addReference);
 router.post('/remove-reference',authMiddleware,removeReference);
 
 router.get('/analytic-data/:id',authMiddleware,analyticData);
+
+router.post('/individual',authMiddleware,individualProfile);
+router.get('/individual/:id',authMiddleware,getIndividualProfile);
+router.post('/business-profile',authMiddleware,businessProfile);
+router.get('/business-profile/:id',authMiddleware,getBusinessProfile);
+
 
 module.exports = router;

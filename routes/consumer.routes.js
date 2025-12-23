@@ -1,7 +1,9 @@
 // routes/formRoutes.js
 const express =  require('express')
-const { createOrUpdateBasket, createOrUpdatePreference, createOrUpdateProfile, createOrUpdateService, createOrUpdateStayUpdated, getBasketByUserId, getPreferenceByUserId, getProfileByUserId, getServiceByUserId, getStayUpdatedByUserId,  updateImage } =  require("../controllers/consumer.controller");
+const { createOrUpdateBasket, createOrUpdatePreference, createOrUpdateProfile, createOrUpdateService, createOrUpdateStayUpdated, getBasketByUserId, getPreferenceByUserId, getProfileByUserId, getServiceByUserId, getStayUpdatedByUserId,  updateImage, getReference } =  require("../controllers/consumer.controller");
 const getUploader = require('../config/multerConfig');
+const { addReference, removeReference } = require('../controllers/consumer.controller');
+const authMiddleware = require('../middlewares/auth.middleware');
 
 
 const router = express.Router();
@@ -28,6 +30,8 @@ router.get("/preference/:userId", getPreferenceByUserId);
 router.post("/stayUpdated", createOrUpdateStayUpdated);
 router.get("/stayUpdated/:userId", getStayUpdatedByUserId);
 
-
+router.post('/add-reference',authMiddleware,addReference);
+router.get('/get-reference/:id',authMiddleware,getReference);
+router.post('/remove-reference',authMiddleware,removeReference);
 
 module.exports= router;

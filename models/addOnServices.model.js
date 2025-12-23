@@ -11,6 +11,7 @@ const addOnSchema=new Schema({
     },
     price:Number,
     type:String,
+    addonType:{type:String,enum:['bespoke','customized ','dispute'],unique:true}
 },{timestamps:true})
 
 module.exports=mongoose.model('addon-services',addOnSchema)

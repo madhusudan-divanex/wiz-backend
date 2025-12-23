@@ -16,6 +16,7 @@ const profileFormSchema = new mongoose.Schema(
     age: { type: String },
     gender: { type: String },
     profileImage:String,
+     visaStatus: String,
   },
   { timestamps: true }
 );

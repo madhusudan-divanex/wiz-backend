@@ -67,7 +67,7 @@ cron.schedule('0 0 * * *', async () => {
 
       if (allExpired) {
         // Update user status to pending
-        await User.findByIdAndUpdate(acc.userId, { status: 'tdraft' });
+        await User.findByIdAndUpdate(acc.userId, { status: 'tradedraft' });
         console.log(`User ${acc.userId} status updated to pending (all licenses expired).`);
       }
     }

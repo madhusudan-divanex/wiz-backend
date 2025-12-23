@@ -173,8 +173,13 @@ exports.createFaq = async (req, res) => {
 
 // GET ALL FAQS
 exports.getAllFaqs = async (req, res) => {
+  const {category}=req.query
   try {
-    const faqs = await FaqModel.find().sort({ createdAt: -1 });
+    let filter={}
+    if(category){
+      filter.category=category
+    }
+    const faqs = await FaqModel.find(filter).sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,

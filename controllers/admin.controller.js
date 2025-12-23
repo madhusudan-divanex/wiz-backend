@@ -26,6 +26,7 @@ const ConsumerProfile = require("../models/Consumer/Profile");
 const ScamType = require('../models/FrontEnd/ScamType');
 const ServiceCategory = require('../models/FrontEnd/ServiceCategory');
 const Basket = require('../models/Consumer/Basket');
+const ConsumerReferences = require('../models/Consumer/ConsumerReferences');
 
 exports.loginAdmin = async (req, res) => {
     const { email, password } = req.body;
@@ -157,13 +158,13 @@ exports.deleteMembership = async (req, res) => {
 
 //      Add On Services 
 exports.createAddOn = async (req, res) => {
-    const { price, type, name, description } = req.body
+    const { price, type, name, description,addonType } = req.body
     try {
         const getMemberShip = await Addon.findOne({ name })
         if (getMemberShip) {
             return res.status(200).json({ message: "Add on already exists with this name", status: false })
         }
-        const newData = await Addon.create({ price, type, name, description })
+        const newData = await Addon.create({ price, type, name, description,addonType })
         if (newData) {
             return res.status(200).json({ message: "Add on created", status: true })
         } else {
@@ -204,13 +205,13 @@ exports.getAddOnData = async (req, res) => {
 };
 
 exports.updateAddOn = async (req, res) => {
-    const { addOnId, price, type, name, description } = req.body
+    const { addOnId, price, type, name, description ,addonType} = req.body
     try {
         const getAddOn = await Addon.findById(addOnId)
         if (!getAddOn) {
             return res.status(200).json({ message: "Add on not exists", status: false })
         }
-        const updateData = await Addon.findByIdAndUpdate(addOnId, { price, type, name, description }, { update: true })
+        const updateData = await Addon.findByIdAndUpdate(addOnId, { price, type, name, description,addonType }, { update: true })
         if (updateData) {
             return res.status(200).json({ message: "Add on updated", status: true })
         } else {
@@ -526,7 +527,7 @@ exports.getAllUsers = async (req, res) => {
             searchConditions.push({ status: 'live' });
         }
         if (status == 'license') {
-            searchConditions.push({ status: 'tdraft' });
+            searchConditions.push({ status: 'tradedraft' });
         }
         const searchFilter = searchConditions.length > 0 ? { $and: searchConditions } : {};
         const totalUsers = await User.countDocuments(searchFilter);
@@ -772,7 +773,15 @@ exports.getAllAds = async (req, res) => {
         const status = req.query.status
 
         // Fetch ads with 'under-review' first
-        const ads = await Advertisement.find()
+        let filter = {}
+        if (status) {
+            if (status === 'requested') {
+                filter.status = 'requested';
+            } else {
+                filter.status = { $ne: 'requested' }; 
+            }
+        }
+        const ads = await Advertisement.find(filter)
             .sort({
                 // status: 1, // Sort by status alphabetically: 'expired' < 'live' < 'under-review'
                 createdAt: -1
@@ -850,6 +859,49 @@ exports.getAllReferences = async (req, res) => {
         });
     }
 };
+exports.getConsumerReferences = async (req, res) => {
+    try {
+        // Pagination parameters
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Fetch ads with 'under-review' first
+        const ads = await ConsumerReferences.find()
+            .populate('userId', select = '-password')
+            .sort({
+                status: 1, // Sort by status alphabetically: 'expired' < 'live' < 'under-review'
+                createdAt: -1
+            })
+            .skip(skip)
+            .limit(limit);
+
+        // Reorder manually to ensure 'under-review' are always first
+        // const orderedRef = [
+        //     ...ads.filter(ad => ad.status === 'pending'),
+        //     ...ads.filter(ad => ad.status !== 'pending')
+        // ];
+
+        // Get total count for pagination metadata
+        const total = await ConsumerReferences.countDocuments();
+
+        return res.status(200).json({
+            status: true,
+            message: 'References fetched successfully',
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            totalRef: total,
+            data: ads
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            status: false,
+            message: 'Failed to fetch advertisements',
+            error: error.message
+        });
+    }
+};
 exports.adAction = async (req, res) => {
     const { status, adId } = req.body
     try {
@@ -871,6 +923,21 @@ exports.trusedReferenceAction = async (req, res) => {
         const isExist = await Reference.findById(refId)
         if (!isExist) return res.status(200).json({ message: "Report not found" })
         await Reference.findByIdAndUpdate(refId, { status, comment }, { new: true })
+
+        return res.status(200).json({
+            success: true,
+            message: "Reference updated"
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+exports.consumerReferenceAction = async (req, res) => {
+    const { status, refId, } = req.body
+    try {
+        const isExist = await ConsumerReferences.findById(refId)
+        if (!isExist) return res.status(200).json({ message: "Reffernce not found" })
+        await ConsumerReferences.findByIdAndUpdate(refId, { status }, { new: true })
 
         return res.status(200).json({
             success: true,
@@ -1030,7 +1097,7 @@ exports.newsLetter = async (req, res) => {
     }
 };
 exports.updateAdvertisement = async (req, res) => {
-    const { adId, amount, startDate, endDate, adDesc, accountName, contactNumber, description, spot } = req.body
+    const { adId, amount, startDate, endDate, adDesc, accountName, contactNumber, description, spot, status } = req.body
     const image = req.files?.['image']?.[0]?.path
     try {
         const getAd = await Advertisement.findById(adId)
@@ -1040,9 +1107,9 @@ exports.updateAdvertisement = async (req, res) => {
         if (image && getAd.image) {
             safeUnlink(getAd.image)
         }
-        const updateData = await Advertisement.findByIdAndUpdate(adId, { image, amount, adDesc, startDate, endDate, accountName, contactNumber, description, spot }, { new: true })
+        const updateData = await Advertisement.findByIdAndUpdate(adId, { image, amount, adDesc, startDate, endDate, accountName, contactNumber, description, spot, status }, { new: true })
         if (updateData) {
-            return res.status(200).json({ message: "Advertisement updated", status: true })
+            return res.status(200).json({ message: "Advertisement updated", status: true, data: updateData })
         } else {
             return res.status(200).json({
                 status: false,
@@ -1056,9 +1123,10 @@ exports.updateAdvertisement = async (req, res) => {
 };
 
 exports.getAvailableDates = async (req, res) => {
+    const spot = req.params.spot
     try {
         const ads = await Advertisement.find({
-            status: { $in: ["approve", "live"] } // consider only active ads
+            status: { $in: ["approve", "live"] }, spot // consider only active ads
         });
         if (!ads || ads.length === 0) {
             return res.status(200).json({ message: "No active advertisements", status: false, occupiedDates: [] });
@@ -1531,7 +1599,7 @@ exports.getWelcomeBasket = async (req, res) => {
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         totalBasket = await Basket.countDocuments();
-        welcomeBasket = await Basket.find().populate({path:'userId',select:'-password'})
+        welcomeBasket = await Basket.find().populate({ path: 'userId', select: '-password' })
             .sort({ name: 1 })
             .skip((pageNum - 1) * limitNum)
             .limit(limitNum);
@@ -1551,18 +1619,18 @@ exports.getWelcomeBasket = async (req, res) => {
 };
 exports.basketAction = async (req, res) => {
     try {
-        const {basketId, status } = req.body;
+        const { basketId, status } = req.body;
 
-        const findBasket=await Basket.findById(basketId);
-        if(!findBasket) return res.status(200).json({message:"Basket not found",status:false})
-        
+        const findBasket = await Basket.findById(basketId);
+        if (!findBasket) return res.status(200).json({ message: "Basket not found", status: false })
 
-        const isBasket = await Basket.findByIdAndUpdate(basketId,{ status :status},{new:true});
-       
+
+        const isBasket = await Basket.findByIdAndUpdate(basketId, { status: status }, { new: true });
+
 
         return res.status(200).json({
             status: true,
-            
+
         });
 
 

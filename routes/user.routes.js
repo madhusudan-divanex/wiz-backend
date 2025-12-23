@@ -1,5 +1,5 @@
 const express = require('express');
-const { createUseradmin, getAllUsers, getUserById, updateUser,deleteUser, buyMembership, deleteUserWithReason, upgradeMembership, cancelMembership, createScamReport, getScamReports, getScamBook, podcastSubscribe, contactQuery, searchProfile, viewProfile, userViewProfile, bookmarkProfile, getBookmarkData, getRecommendedData, recommendUser, downgradeMembership, nextPayment, userScamReport, deleteReport, dashboardData, purchaseHistory, getRatingReceivedData, getRatingGivenData, getGivenFeedback, giveFeedback, getMyGivenFeedback, sendMsg, getMsg, myChats, addBilling, getAllBilling, getProfileData, getListingUser, getTopProviders, disputeQuery, getDisputeQuery, bespokeRequestQuery, sendBasket, getRequestServiceQuery, subscribeNeswsletter, inviteUserEmail, connectionRequest, connectionAction, disputePayment, requestPayment, getLiveAd } = require('../controllers/user.controller');
+const { createUseradmin, getAllUsers, getUserById, updateUser,deleteUser, buyMembership, deleteUserWithReason, upgradeMembership, cancelMembership, createScamReport, getScamReports, getScamBook, podcastSubscribe, contactQuery, searchProfile, viewProfile, userViewProfile, bookmarkProfile, getBookmarkData, getRecommendedData, recommendUser, downgradeMembership, nextPayment, userScamReport, deleteReport, dashboardData, purchaseHistory, getRatingReceivedData, getRatingGivenData, getGivenFeedback, giveFeedback, getMyGivenFeedback, sendMsg, getMsg, myChats, addBilling, getAllBilling, getProfileData, getListingUser, getTopProviders, disputeQuery, getDisputeQuery, bespokeRequestQuery, sendBasket, getRequestServiceQuery, subscribeNeswsletter, inviteUserEmail, connectionRequest, connectionAction, disputePayment, requestPayment, getLiveAd, readMessage } = require('../controllers/user.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { getUserProfile } = require('../controllers/auth.controller');
 const getUploader = require('../config/multerConfig');
@@ -73,7 +73,7 @@ router.get('/connection-request/:id',authMiddleware,connectionRequest)
 router.post('/connection-action',authMiddleware,connectionAction)
 
 
-
+router.post('/read-message',authMiddleware,readMessage)
 
 
 module.exports = router;
