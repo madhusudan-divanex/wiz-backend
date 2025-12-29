@@ -113,7 +113,7 @@ const requestBespoke = new mongoose.Schema(
     },
     serviceUsed:{type:Boolean,default:false},
     tokenUsed:{type:Boolean,default:false},
-    status: { type: String, enum: ['payment-pending', 'pending', 'completed'], default: 'payment-pending' },
+    status: { type: String, enum: ['payment-pending', 'pending', 'completed','approved','rejected'], default: 'payment-pending' },
   },
   { timestamps: true }
 );

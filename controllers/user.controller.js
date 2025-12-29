@@ -1706,9 +1706,9 @@ exports.getDisputeQuery = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
     if (req.query.type == 'againstMe') {
-      const totalCount = await OpenDispute.countDocuments({ against: userId, status: { $ne: 'payment-pending' } });
+      const totalCount = await OpenDispute.countDocuments({ against: userId, status: { $in: ['approve', 'resolved'] } });
       const pendingCount = await OpenDispute.countDocuments({ against: userId, status: 'pending' })
-      const disputeData = await OpenDispute.find({ against: userId, status: { $ne: 'payment-pending' } }).populate({ path: 'userId', select: '-password' })
+      const disputeData = await OpenDispute.find({ against: userId, status: { $in: ['approve', 'resolved'] } }).populate({ path: 'userId', select: '-password' })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);

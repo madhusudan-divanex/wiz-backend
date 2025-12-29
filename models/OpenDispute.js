@@ -58,7 +58,7 @@ const disputeSchema=new Schema({
     },
     serviceUsed:{type:Boolean,default:false},
     tokenUsed:{type:Boolean,default:false},
-    status:{type:String,enum:['payment-pending','pending','resolved'],default:'payment-pending'},
+    status:{type:String,enum:['payment-pending','pending','resolved','approved','rejected'],default:'payment-pending'},
     resolution:String,
 },{timestamps:true})
 module.exports=mongoose.model('open-dispute',disputeSchema)

@@ -123,8 +123,9 @@ exports.verifyOtp = async (req, res) => {
             isNew = false;
         }
        const isComplete = Boolean(await ProviderAccreditation.findOne({ userId: isExist._id })) || Boolean(await StayUpdate.findOne({ userId: isExist._id }));
-        const isMembership = await BuyMembership.findOne({ userId: isExist._id, status: 'active' }).populate('membershipId')
+        const isMembership = await BuyMembership.findOne({ userId: isExist._id, status: {$in:['active','expired'] }}).populate('membershipId')
         let isVip=false
+        console.log("is mebmer ship",isMembership)
         if (isMembership) {
             isPurchase = true
             if(isMembership.membershipId.type=='provider' && isMembership?.membershipId?.topChoice){
