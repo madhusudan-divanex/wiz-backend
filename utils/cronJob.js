@@ -55,7 +55,7 @@ cron.schedule('0 0 * * *', async () => {
     const today = new Date();
 
     // Find all provider accreditations
-    const accreditations = await ProviderAccreditation.find({});
+    const accreditations = await ProviderAccreditation.find({licenseCurrentlyActive:true});
 
     for (const acc of accreditations) {
       if (!acc.licenses || acc.licenses.length === 0) continue;

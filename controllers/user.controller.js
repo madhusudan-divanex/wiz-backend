@@ -39,6 +39,7 @@ const RequestBespoke = require('../models/RequestBespoke');
 const NewsLetter = require('../models/NewsLetter');
 const BookmarkModel = require('../models/Bookmark.model');
 const ConsumerReferences = require('../models/Consumer/ConsumerReferences');
+const { default: mongoose } = require('mongoose');
 
 // ✅ CREATE
 exports.createUseradmin = async (req, res) => {
@@ -238,7 +239,7 @@ exports.deleteUser = async (req, res) => {
     });
 
     await BuyMembership.deleteMany({ userId })
-    await ConsumerReferences.deleteMany({userId})
+    await ConsumerReferences.deleteMany({ userId })
     await Login.deleteMany({ userId })
     await Otp.deleteMany({ userId })
     await ProviderFeature.findOneAndDelete({ userId })
@@ -527,6 +528,11 @@ exports.buyMembership = async (req, res) => {
 
     } else {
       const newData = await BuyMembership.create(req.body)
+      const isExist = !!(await BuyMembership.findOne({
+        userId,
+        status: 'expired'
+      }));
+
       if (newData) {
         const membershipType = String(findMembership.type).toLowerCase().trim();
 
@@ -559,7 +565,7 @@ exports.buyMembership = async (req, res) => {
           }
         }
         const isGold = findMembership.topChoice
-        return res.status(200).json({ status: true, isGold, message: "Membership purchased" });
+        return res.status(200).json({ status: true, isGold,isExist, message: "Membership purchased" });
       }
       else {
         return res.status(200).json({ status: false, message: "Membership not purchased" });
@@ -974,7 +980,7 @@ exports.viewProfile = async (req, res) => {
   try {
     if (userId == viewUserId) {
       return res.status(200).json({ success: true, });
-    }   
+    }
     const contact = await ProfileView.create({ userId, viewUserId });
     return res.status(200).json({ success: true, });
   } catch (err) {
@@ -983,33 +989,53 @@ exports.viewProfile = async (req, res) => {
   }
 };
 exports.userViewProfile = async (req, res) => {
-  const userId = req.params.id
+  const userId = req.params.id;
+
   try {
-    const profileViews = await ProfileView.find({ userId }).populate('userId', 'firstName lastName')
-      .populate('viewUserId', 'firstName lastName').limit(20) || []
+    const profileViews = await ProfileView.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+
+      // same viewer ko 1 baar rakho
+      {
+        $group: {
+          _id: "$viewUserId",
+          view: { $first: "$$ROOT" }
+        }
+      },
+
+      { $replaceRoot: { newRoot: "$view" } },
+      { $sort: { createdAt: -1 } },
+      { $limit: 20 }
+    ]);
+
+    await ProfileView.populate(profileViews, [
+      { path: "userId", select: "firstName lastName" },
+      { path: "viewUserId", select: "firstName lastName" }
+    ]);
+
     const viewerIds = profileViews.map(v => v.viewUserId?._id).filter(Boolean);
 
-    // Step 3: fetch ProviderProfiles of all viewers
-    const viewerProfiles = await ProviderProfile.find({ userId: { $in: viewerIds } })
-      .populate({
-        path: 'categories.category',
-        select: 'name image'
-      })
-      .populate({
-        path: 'categories.service',
-        select: 'name subCat'
-      });
+    const viewerProfiles = await ProviderProfile.find({
+      userId: { $in: viewerIds }
+    })
+      .populate("categories.category", "name image")
+      .populate("categories.service", "name subCat");
 
-    // Step 4: merge viewer profile with profile view
     const mergedViews = profileViews.map(v => ({
-      ...v.toObject(),
-      viewerProfile: viewerProfiles.find(p => p.userId.toString() === v.viewUserId?._id?.toString()) || null
+      ...v,
+      viewerProfile:
+        viewerProfiles.find(
+          p => p.userId.toString() === v.viewUserId?._id?.toString()
+        ) || null
     }));
+
     return res.status(200).json({ success: true, profileViews: mergedViews });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
+
+
 exports.bookmarkProfile = async (req, res) => {
   const { userId, bookmarkUser, trackerBookmark, blogBookmark } = req.body
   try {
@@ -1273,7 +1299,7 @@ exports.giveFeedback = async (req, res) => {
   try {
     const isExist = await User.findById(userId)
     if (!isExist) return res.status(200).json({ message: "User not found", status: false })
-    const isFeedback = await FeedBack.findOne({userId})
+    const isFeedback = await FeedBack.findOne({ userId ,feedbackUser})
     if (isFeedback) return res.status(200).json({ message: "Already exist", status: false })
 
     const newFeedback = await FeedBack.create({ userId, title, rating, feedback, feedbackUser });
@@ -1441,7 +1467,7 @@ exports.myChats = async (req, res) => {
           ]
         }).sort({ createdAt: -1 }); // Sort by most recent message
         const profile = user.role === 'consumer' ? await ConsumerProfile.findOne({ userId: user._id }) : await ProviderProfile.findOne({ userId: user._id })
-console.log(lastMessage)
+        console.log(lastMessage)
         return {
           user,
           _id: lastMessage ? lastMessage._id : null,
@@ -1706,9 +1732,9 @@ exports.getDisputeQuery = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
     if (req.query.type == 'againstMe') {
-      const totalCount = await OpenDispute.countDocuments({ against: userId, status: { $in: ['approve', 'resolved'] } });
+      const totalCount = await OpenDispute.countDocuments({ against: userId, status: { $in: ['resolved'] } });
       const pendingCount = await OpenDispute.countDocuments({ against: userId, status: 'pending' })
-      const disputeData = await OpenDispute.find({ against: userId, status: { $in: ['approve', 'resolved'] } }).populate({ path: 'userId', select: '-password' })
+      const disputeData = await OpenDispute.find({ against: userId, status: { $in: [ 'resolved'] } }).populate({ path: 'userId', select: '-password' })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);

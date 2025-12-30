@@ -971,7 +971,7 @@ exports.getAllServiceDispute = async (req, res) => {
             .populate({ path: 'against', select: '-password' })
             .populate({ path: 'userId', select: '-password' })
             .sort({
-                status: 1,
+                // status: 1,
                 createdAt: -1
             })
             .skip(skip)
