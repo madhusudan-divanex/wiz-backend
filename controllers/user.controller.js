@@ -565,7 +565,7 @@ exports.buyMembership = async (req, res) => {
           }
         }
         const isGold = findMembership.topChoice
-        return res.status(200).json({ status: true, isGold,isExist, message: "Membership purchased" });
+        return res.status(200).json({ status: true, isGold, isExist, message: "Membership purchased" });
       }
       else {
         return res.status(200).json({ status: false, message: "Membership not purchased" });
@@ -1299,7 +1299,7 @@ exports.giveFeedback = async (req, res) => {
   try {
     const isExist = await User.findById(userId)
     if (!isExist) return res.status(200).json({ message: "User not found", status: false })
-    const isFeedback = await FeedBack.findOne({ userId ,feedbackUser})
+    const isFeedback = await FeedBack.findOne({ userId, feedbackUser })
     if (isFeedback) return res.status(200).json({ message: "Already exist", status: false })
 
     const newFeedback = await FeedBack.create({ userId, title, rating, feedback, feedbackUser });
@@ -1734,7 +1734,7 @@ exports.getDisputeQuery = async (req, res) => {
     if (req.query.type == 'againstMe') {
       const totalCount = await OpenDispute.countDocuments({ against: userId, status: { $in: ['resolved'] } });
       const pendingCount = await OpenDispute.countDocuments({ against: userId, status: 'pending' })
-      const disputeData = await OpenDispute.find({ against: userId, status: { $in: [ 'resolved'] } }).populate({ path: 'userId', select: '-password' })
+      const disputeData = await OpenDispute.find({ against: userId, status: { $in: ['resolved'] } }).populate({ path: 'userId', select: '-password' })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -1862,7 +1862,7 @@ exports.getRequestServiceQuery = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
     const totalCount = await RequestBespoke.countDocuments(filter);
-    const bespokeData = await RequestBespoke.find(filter).populate('businessCategory')
+    const bespokeData = await RequestBespoke.find(filter).populate('businessCategory').populate('providerId')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -1942,8 +1942,25 @@ exports.connectionRequest = async (req, res) => {
         profileData
       }
     }))
+     const myConnection = await ProviderFeature.find({
+      connection: {
+        $elemMatch: {
+          userId: userId,
+          status: "accepted"
+        }
+      }
+    }).populate('userId', 'firstName lastName email');
 
-    return res.status(200).json({ success: true, userProfile });
+    const myProfile = await Promise.all(myConnection.map(async (item) => {
+      const profileData = await ProviderProfile.findOne({ userId: item.userId._id }).select('profileImage title company');
+
+      return {
+        ...item.toObject(),
+        profileData
+      }
+    }))
+
+    return res.status(200).json({ success: true, userProfile,myProfile });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }

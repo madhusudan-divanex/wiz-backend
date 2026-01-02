@@ -1066,11 +1066,11 @@ exports.disputeAction = async (req, res) => {
     }
 };
 exports.serviceAction = async (req, res) => {
-    const { status, serviceId } = req.body
+    const { status, serviceId ,providerId} = req.body
     try {
         const isExist = await RequestBespoke.findById(serviceId)
         if (!isExist) return res.status(200).json({ message: "Service not found" })
-        await RequestBespoke.findByIdAndUpdate(serviceId, { status }, { new: true })
+        await RequestBespoke.findByIdAndUpdate(serviceId, { status,providerId }, { new: true })
 
         return res.status(200).json({
             success: true,
