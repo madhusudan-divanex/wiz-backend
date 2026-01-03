@@ -1035,6 +1035,7 @@ exports.getRequestedService = async (req, res) => {
         const totalQuery = await RequestBespoke.countDocuments({ type });
 
         const requestedData = await RequestBespoke.find({ type }).sort({ createdAt: -1 }).populate({ path: 'businessCategory', select: "name" }).populate({ path: 'userId', select: '-password' })
+        .populate({ path: 'providerId', select: '-password' })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
 
