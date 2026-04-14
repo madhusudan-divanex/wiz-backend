@@ -1,0 +1,62 @@
+ userSlice api/users/
+ redirect to login after signup 
+ membership % off on yearly 
+
+ http://216.48.189.66:9758
+ http://216.48.189.66:9003
+
+Api (create,get)->
+  Profile,Feature,
+  Marketing,Accerditataion for provider
+Admin->
+    List Podcast Subscriber/Book Customer
+Consumer->
+    Dispute request
+    Bespoke Concierge Service
+    Customized Diligence Service   
+    Welcome Basket 
+Laboratory->
+    CRUD Test
+    Patient Details
+Api->
+    Service payment
+    Remove Profile
+Admin->
+    Service Dispute
+
+Email->
+    Otp 
+    Provider membership
+    Consumer membership
+    Invite User
+    Scam Report Recived 
+    Scam Report Rejected 
+    Scam Report Live 
+    Podcast Subscriber
+    Contact
+    adRecived
+
+    CRUD Blog Category
+
+Hospital FeedBack->
+    adding doctor in hospital and giving access
+Trading FeedBack->
+    Otp on Login/Register 
+    Payout 
+    Login Alert remove 
+    Favicon
+Wizbizla->
+    Feedback
+    service Dispute 
+    billing
+    
+service payment
+membership payment
+are you sure 
+purchase/service/myaddon (dispute,bespoke,customize)
+feedback/concenrn/get in touch
+
+Loader-
+License 
+expire membership
+

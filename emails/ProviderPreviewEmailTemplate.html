@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="../../assets/images/favicon.png" sizes="16x16">
+    <title>Onbording Email Template</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="bootstrap.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
+        integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
+
+
+    <style>
+        body {
+            font-family: "Geist", sans-serif;
+            background: #00022A66;
+        }
+
+        .dash-profile-sec {
+            background: #FFFFFF !important;
+            box-shadow: 0px 24px 24px -8px #2A334608, 0px 10px 10px -5px #2A334608, 0px 5px 5px -2.5px #2A334608, 0px 3px 3px -1.5px #2A33460A, 0px 2px 2px -1px #2A33460A, 0px 1px 1px -0.5px #2A334608, 0px 0px 0px 1px #0E3F7E0F;
+            border-radius: 12px;
+        }
+
+        .email-template-sec .email-temp-bottom-bord {
+            border-bottom: 2px solid rgba(98, 104, 132, 0.1) !important;
+            padding: 10px 0;
+            border-radius: 2px;
+        }
+
+        .email-top-border {
+            border-top: 2px solid rgba(98, 104, 132, 0.1) !important;
+            padding: 10px 0;
+            border-radius: 2px;
+        }
+
+
+        .email-temp-bottom-bord h1 {
+            font-size: 32px;
+            font-weight: 600;
+            color: #00022A !important;
+        }
+
+        .email-template-sec {
+            padding: 20px 0;
+        }
+
+        .email-template-sec .email-temp-main-box {
+            padding: 32px;
+        }
+
+        .email-template-sec .email-temp-main-box .email-temp-logo img {
+            width: 74px;
+            height: 85px;
+        }
+
+        .email-template-sec .email-temp-main-box h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #00022A;
+            line-height: 20px;
+        }
+
+        .email-template-sec .email-temp-main-box p {
+            font-size: 18px;
+            font-weight: 400;
+            color: #626884;
+            line-height: 24px;
+        }
+
+        .email-template-sec .email-temp-main-box h5 {
+            font-size: 18px;
+            font-weight: 400;
+            color: #00022A;
+        }
+
+        .email-template-sec .email-temp-main-box h6 {
+            font-size: 18px;
+            font-weight: 500;
+            color: #4F40FF;
+        }
+
+        .email-template-sec .bottom-email-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+        }
+
+        .email-template-sec .bottom-email-footer .email-temp-logo-footer img {
+            width: 45px;
+            height: 53px;
+        }
+
+        .email-template-sec .email-bottom-social-link ul {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 0;
+        }
+
+        .email-template-sec .email-bottom-social-link .email-temp-icon {
+            color: #98A2B3;
+            font-size: 20px;
+        }
+
+        .email-template-sec .email-bottom-social-link .email-temp-icon:hover {
+            color: #4F40FF;
+        }
+
+        .email-template-sec .email-temp-main-box .email-temp-list {
+            padding-left: 20px !important;
+        }
+
+        .email-template-sec .email-temp-main-box .email-temp-list li {
+            font-size: 18px;
+            font-weight: 400;
+            color: #626884;
+            list-style-type: disc !important;
+        }
+
+        .premium-service {
+            display: inline-block;
+            color: #4F40FF;
+            font-weight: 600 !important;
+            font-size: 18px !important;
+            text-decoration: underline !important;
+            transition: all;
+            cursor: pointer;
+        }
+
+        .thm-btn {
+            display: inline-block;
+            padding: 12px 20px;
+            background-color: #4F40FF;
+            border: 1px solid #4F40FF;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: 500;
+            font-size: 16px;
+            text-align: center;
+            text-decoration: none;
+            width: 200px;
+        }
+
+
+        .thm-btn:hover,
+        .thm-btn.outline:hover {
+            background-color: #4435f4;
+            border-color: #4435f4;
+            color: #fff;
+        }
+
+        .email-temp-usr {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .email-temp-usr img {
+            width: 37px;
+            height: 37px;
+            border-radius: 50%;
+        }
+
+        .email-temp-usr h5 {
+            font-size: 16px;
+            color: #626884 !important;
+            font-weight: 400;
+            margin-bottom: 0;
+        }
+
+
+
+        @media screen and (max-width : 991px) {
+            .email-template-sec .email-temp-main-box {
+                padding: 16px 24px;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <section class="email-template-sec">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-6 col-md-12 col-sm-12">
+                    <div class="dash-profile-sec ">
+                        <!-- <div class="email-temp-main-box">
+                            <div class="email-temp-logo">
+                                <img src="../../assets/images/email-temp-logo.png" alt="Email Logo" />
+                            </div>
+
+                            <div class="email-temp-usr my-3">
+                                <img src="../../assets/images/email-usr.jpg" alt="">
+                                <h5>Marilyn Mango</h5>
+                            </div>
+
+                            <h2 class="py-4">
+                                Sam is Ready to Share Wizbizla’s Secret to Boosting Business Visibility!
+                            </h2>
+                            <p>Hey [Friend's Name],</p>
+                            <p class="py-2"> <span>Sign up for Wizbizla</span> and get accredited today! It’s the
+                                easiest
+                                way to enhance
+                                your business presence and tap into 360-degree marketing at an unbeatable price.</p>
+
+                            <ul class="email-temp-list">
+                                <li><span class="fw-bold">Accreditation:</span> Differentiate yourself from the
+                                    competition
+                                    (and those
+                                    shifty,
+                                    unscrupulous service providers lurking in your industry!).
+                                </li>
+                                <li><span class="fw-bold">Ideal Client Matches:</span> Save time, money, and resources
+                                    by
+                                    connecting with
+                                    your perfect
+                                    clients.</li>
+                                <li> <span class="fw-bold">Massive ROI:</span> Reach new expats and grow your business
+                                    effortlessly.</li>
+                            </ul>
+
+                            <p class="pt-3">Plus, enjoy <span class="fw-bold">10% off your first membership!</span>
+                                Cancel
+                                anytime, no commitments.
+                                Sounds too good to be true? See for yourself—log onto <span
+                                    class="fw-bold">Wizbizla</span>
+                                and explore your
+                                options.</p>
+
+                            <div class="email-temp-btn d-flex my-4">
+                                <a href="javascript:void(0)" class="thm-btn">Visit Wizbizla</a>
+                            </div>
+
+
+                            <h5 class="mb-0">Best regards,</h5>
+                            <h5 class="mb-0">The Wizbizla Team</h5>
+                            <h6 class="py-3">Connecting Expats With Trusted Professionals</h6>
+                            <div class="bottom-email-footer">
+                                <div class="email-temp-logo-footer">
+                                    <img src="../../assets/images/email-temp-logo.png" alt="Footer Logo" />
+                                </div>
+
+                                <div class="email-bottom-social-link">
+                                    <ul class="list-unstyled">
+                                        <li>
+                                            <a href="#">
+                                                <i class="fa-brands fa-x-twitter email-temp-icon"></i>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="#">
+                                                <i class="fa-brands fa-facebook email-temp-icon"></i>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="#">
+                                                <i class="fa-brands fa-instagram email-temp-icon"></i>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                        </div> -->
+
+                        <div class="email-temp-main-box">
+                            <div class="email-temp-bottom-bord">
+                                <h1>Preview Email</h1>
+                            </div>
+                            <div class="email-temp-logo pt-3">
+                                <img src="../../assets/images/email-temp-logo.png" alt="">
+                            </div>
+                            <h2 class="py-3">Sam is Ready to Share Wizbizla’s Secret to Boosting Business Visibility!
+                            </h2>
+                            <p>Hey [Friend's Name],</p>
+
+                            <p class="py-2"> <span class="fw-bold">Sign up for Wizbizla </span>and get accredited today!
+                                It’s the
+                                easiest way to
+                                enhance your business presence and tap into 360-degree marketing at an unbeatable price
+                            </p>
+
+
+                            <ul class="email-temp-list">
+                                <li> <span class="fw-bold">Accreditation:</span> Differentiate yourself from the
+                                    competition (and those
+                                    shifty,
+                                    unscrupulous service providers lurking in your industry!).
+                                </li>
+                                <li> <span class="fw-bold">Ideal Client Matches:</span> Save time, money, and resources
+                                    by connecting
+                                    with your
+                                    perfect clients.</li>
+
+                                <li> <span class="fw-bold">Massive ROI:</span> Reach new expats and grow your business
+                                    effortlessly.
+                                </li>
+                            </ul>
+
+                            <p class="pt-3">Plus, enjoy <span class="fw-bold">10% off your first membership!</span>
+                                Cancel anytime, no commitments.
+                                Sounds too good to be true? See for yourself—log onto <span
+                                    class="fw-bold">Wizbizla</span> and explore
+                                your
+                                options.:</p>
+
+                            <div class="email-temp-btn d-flex my-4">
+                                <a href="javascript:void(0)" class="thm-btn"> Visit Wizbizla</a>
+                            </div>
+
+
+                            <h5 class="mb-0">Best regards,</h5>
+                            <h5 class="mb-0">The Wizbizla Team</h5>
+                            <h6 class="py-3">Connecting Expats With Trusted Professionals</h6>
+
+                            <div class="bottom-email-footer">
+                                <div class="email-temp-logo-footer">
+                                    <img src="../../assets/images/email-temp-logo.png" alt="Footer Logo" />
+                                </div>
+
+                                <div class="email-bottom-social-link">
+                                    <ul class="list-unstyled">
+                                        <li>
+                                            <a href="#">
+                                                <i class="fa-brands fa-x-twitter email-temp-icon"></i>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="#">
+                                                <i class="fa-brands fa-facebook email-temp-icon"></i>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="#">
+                                                <i class="fa-brands fa-instagram email-temp-icon"></i>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="email-top-border">
+                                <div class="email-temp-btn d-flex my-4">
+                                    <a href="javascript:void(0)" class="thm-btn w-100"> Close</a>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+        integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js"
+        integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y"
+        crossorigin="anonymous"></script>
+
+    <script src="bootstrap.min.js"></script>
+    <script src="popper.min.js"></script>
+
+</body>
+
+</html>

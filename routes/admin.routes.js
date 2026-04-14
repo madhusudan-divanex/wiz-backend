@@ -1,0 +1,99 @@
+const express = require('express');
+const { loginAdmin, getAdminProfile, getMembershipData, createAddOn, getAddOn, getAddOnData, updateAddOn, deleteAddOn, getAllUsers, getAllPurchaseMembership, createCategory, updateCategory, getCategory, getCategoryData, deleteCategory, getAllDeletedUsers, getAllBookCustomer, getPodcastSubscriber, getContactQuery, approveProfile, createSubCategory, getSubCategory, deleteSubCategory, updateSubCategory, getSubCategoryData, reportAction, getAllAds, adAction, getAllReferences, referenceAction, shareMicWithUs, scamData, getAllServiceDispute, getAllFeedback, getRequestedService, disputeAction, serviceAction, newsLetter, updateAdvertisement, getAvailableDates, getAllReferencesForAdmin, getAllChatsForAdmin, getChatData, trusedReferenceAction, createScamType, getScamType, deleteScamType, updateScamType, createServiceCategory, getServiceCategory, updateServiceCategory, deleteServiceCategory, scamReportAction, basketAction, getWelcomeBasket, getConsumerReferences, consumerReferenceAction, getTransactions, getAllShareMicWithUs, getBlogSubscribers } = require('../controllers/admin.controller');
+const authMiddleware = require('../middlewares/auth.middleware');
+const { deleteMembership } = require('../controllers/admin.controller');
+const { updateMembership } = require('../controllers/admin.controller');
+const { addMembership } = require('../controllers/admin.controller');
+const { getMembership } = require('../controllers/admin.controller');
+const getUploader = require('../config/multerConfig');
+const { getScamReports, feedbackQuery, connectionAction, getAdProvider, mailChecker } = require('../controllers/user.controller');
+const router = express.Router();
+const uploader = getUploader('frontend');
+
+router.post('/admin-login', loginAdmin);
+router.get('/admin-profile',authMiddleware, getAdminProfile);
+router.post('/add-membership',authMiddleware, addMembership);
+router.get('/get-membership', getMembership);
+router.get('/get-membership-data/:id',authMiddleware, getMembershipData);
+router.put('/update-membership',authMiddleware, updateMembership);
+router.delete('/delete-membership/:id',authMiddleware, deleteMembership);
+router.post('/create-addon',authMiddleware, createAddOn);
+router.get('/get-addon', getAddOn);
+router.get('/get-addon-data/:id',authMiddleware, getAddOnData);
+router.put('/update-addon',authMiddleware, updateAddOn);
+router.delete('/delete-addon/:id',authMiddleware, deleteAddOn);
+router.get('/get-all-users',authMiddleware, getAllUsers);
+router.get('/get-all-deleted-users',authMiddleware, getAllDeletedUsers);
+router.get('/get-all-purchase-membership',authMiddleware, getAllPurchaseMembership);
+router.post('/create-category',uploader.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'icon', maxCount: 1 },
+  ]),authMiddleware, createCategory);
+router.put('/update-category',uploader.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'icon', maxCount: 1 },
+  ]),authMiddleware, updateCategory);
+router.get('/get-category', getCategory);
+router.get('/get-category-data/:id', getCategoryData);
+router.delete('/delete-category/:id',authMiddleware, deleteCategory);
+
+router.post('/create-subcategory',authMiddleware,uploader.single('icon'), createSubCategory);
+router.put('/update-subcategory',authMiddleware,uploader.single('icon'), updateSubCategory);
+router.get('/get-subcategory',authMiddleware, getSubCategory);
+router.get('/get-subcategory-data/:id',authMiddleware, getSubCategoryData);
+router.delete('/delete-subcategory/:id',authMiddleware, deleteSubCategory);
+
+router.get('/get-report-scam', getScamReports);
+router.get('/get-scam/:id', scamData);
+router.get('/get-book-customers',authMiddleware, getAllBookCustomer);
+router.get('/get-podcast-subscribers',authMiddleware, getPodcastSubscriber);
+router.get('/get-contact-query',authMiddleware, getContactQuery);
+router.get('/get-service-dispute',authMiddleware, getAllServiceDispute);
+router.get('/get-feedback',authMiddleware, getAllFeedback);
+router.get('/requested-service',authMiddleware, getRequestedService);
+router.post('/dispute-action',authMiddleware, disputeAction);
+
+
+router.post('/profile-action',authMiddleware, approveProfile);
+router.post('/report-action',authMiddleware, reportAction);
+router.post('/scam-report-action',authMiddleware, scamReportAction);
+router.get('/ads',authMiddleware, getAllAds);
+router.get('/trusted-reference',authMiddleware, getAllReferences);
+router.get('/consumer-reference',authMiddleware, getConsumerReferences);
+router.post('/consumer-reference-action',authMiddleware, consumerReferenceAction);
+router.post('/ad-action',authMiddleware, adAction);
+router.post('/trusted-reference-action',authMiddleware, trusedReferenceAction);
+router.post('/share-mic', shareMicWithUs);
+router.get('/share-mic',authMiddleware, getAllShareMicWithUs);
+router.post('/feedback', feedbackQuery);
+router.post('/service-action',authMiddleware, serviceAction);
+router.get('/newsletter', newsLetter);
+router.get('/blog-subscribers', getBlogSubscribers);
+router.post('/advertisement',uploader.fields([
+    { name: 'image', maxCount: 1 },
+  ]),authMiddleware, updateAdvertisement);
+router.get('/occupied-dates/:spot', getAvailableDates);
+router.get('/get-add-reference',authMiddleware, getAllReferencesForAdmin);
+
+router.post('/reference-action',authMiddleware, referenceAction);
+router.get('/get-chats',authMiddleware, getAllChatsForAdmin);
+router.post('/get-chat-data',authMiddleware, getChatData);
+
+router.post('/scam-type',authMiddleware, createScamType);
+router.get('/scam-type', getScamType);
+router.put('/scam-type',authMiddleware, updateScamType);
+router.delete('/scam-type',authMiddleware, deleteScamType);
+
+router.post('/service-category',authMiddleware, createServiceCategory);
+router.get('/service-category', getServiceCategory);
+router.put('/service-category',authMiddleware, updateServiceCategory);
+router.delete('/service-category',authMiddleware, deleteServiceCategory);
+
+router.get('/welcome-basket',authMiddleware,getWelcomeBasket );
+router.post('/basket-action',authMiddleware, basketAction);
+router.get('/top-providers', getAdProvider);
+router.post('/send-mail',mailChecker)
+
+router.get('/transactions',authMiddleware,getTransactions)
+
+module.exports = router;

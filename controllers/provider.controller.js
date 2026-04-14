@@ -1,0 +1,1528 @@
+const ProviderProfile = require('../models/Provider/providerProfile.model');
+const ProviderMarketing = require('../models/Provider/providerMarketing.model');
+const ProviderFeature = require('../models/Provider/providerFeatures.model');
+const ProviderAccreditation = require('../models/Provider/providerAccreditation.model');
+const Advertisement = require('../models/Provider/providerAdvertisement.model');
+const Reference = require('../models/Provider/providerReferences.model');
+const RecommendedUser = require('../models/Recommendation.model')
+const { checkEmail} = require('../utils/sendMail')
+const User = require('../models/user.model');
+const safeUnlink = require('../utils/globalFuntion');
+const StayUpdate = require('../models/Provider/providerStayUpdate.model');
+const ServiceForm = require('../models/Provider/providerServices.model');
+const PreferenceForm = require('../models/Provider/providerBusinessPreference.model');
+const { default: mongoose } = require('mongoose');
+const ProfileViewModel = require('../models/ProfileView.model');
+const ProviderFeedbackModel = require('../models/Provider/providerFeedback.model');
+const { bookmarkProfile } = require('./user.controller');
+const BookmarkModel = require('../models/Bookmark.model');
+const RecommendationModel = require('../models/Recommendation.model');
+const IndividualProfile = require('../models/Provider/individualProfile.model');
+const BusinessProfile = require('../models/Provider/businessProfile.model');
+const BuyMembership = require('../models/buymembership.model')
+const ConsumerProfile = require('../models/Consumer/Profile');
+const Basket = require('../models/Consumer/Basket');
+const Notifications = require('../models/Notifications');
+exports.createOrUpdateProfile = async (req, res) => {
+  try {
+    const {
+      name,
+      title,
+      userId,
+      type,
+      company,
+      location,
+      avatar,
+      idealClientProfile,
+      categories,
+      isDefaultBanner
+    } = req.body;
+
+    // const userId = req.user.userId ||;
+
+    // Find existing profile
+    let profile = await ProviderProfile.findOne({ userId });
+
+    // Parse categories if needed
+    let categoriesData = categories;
+    if (typeof categories === 'string') {
+      categoriesData = JSON.parse(categories);
+    }
+
+    const mappedCategories = categoriesData.map(cat => ({
+      category: cat.category,
+      service: cat.services || cat.service || []
+    }));
+
+
+
+    // Handle media file updates
+    let bannerImage = profile?.bannerImage || '';
+    let profileImage = profile?.profileImage || '';
+    let videoIntro = profile?.videoIntro || '';
+
+    if (req.files?.['bannerImage']?.[0]) {
+      // Delete old banner image if exists
+      safeUnlink(bannerImage);
+      bannerImage = req.files['bannerImage'][0].path;
+    }
+
+    if (req.files?.['profileImage']?.[0]) {
+      // Delete old profile image if exists
+      safeUnlink(profileImage);
+      profileImage = req.files['profileImage'][0].path;
+    }
+
+    if (req.files?.['videoIntro']?.[0]) {
+      // Delete old video intro if exists
+      safeUnlink(videoIntro);
+      videoIntro = req.files['videoIntro'][0].path;
+    }
+
+    const profileData = {
+      userId,
+      name,
+      title,
+      type,
+      isDefaultBanner,
+      company,
+      location,
+      avatar,
+      idealClientProfile,
+      bannerImage,
+      profileImage,
+      videoIntro,
+      categories: mappedCategories
+    };
+
+    if (profile) {
+      // Update existing profile
+      profile = await ProviderProfile.findOneAndUpdate(
+        { userId },
+        profileData,
+        { new: true }
+      );
+    } else {
+      // Create new profile
+      profile = new ProviderProfile(profileData);
+      await profile.save();
+    }
+
+    return res.status(200).json({ status: true, data: profile });
+  } catch (err) {
+
+    if (req.files?.['bannerImage']?.[0]) {
+      // Delete old banner image if exists
+      safeUnlink(req.files['bannerImage'][0].path);
+    }
+
+    if (req.files?.['profileImage']?.[0]) {
+      // Delete old profile image if exists
+      profileImage = req.files['profileImage'][0].path;
+      safeUnlink(profileImage);
+    }
+
+    if (req.files?.['videoIntro']?.[0]) {
+      // Delete old video intro if exists
+      videoIntro = req.files['videoIntro'][0].path;
+      safeUnlink(videoIntro);
+    }
+    console.error(err);
+    return res.status(500).json({ status: false, message: 'Server Error' });
+  }
+};
+
+exports.getProfileByUserId = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const profile = await ProviderProfile.findOne({ userId }).populate('categories.category')   // populate the main category inside each subdoc
+      .populate('categories.service');   // populate the service array inside each subdoc
+
+
+    if (!profile) {
+      return res.status(404).json({ status: false, message: 'Profile not found' });
+    }
+    const totalRecommend = await RecommendedUser.countDocuments({ recommendedUser: userId })
+
+    return res.status(200).json({ status: true, data: profile, totalRecommend });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ status: false, message: 'Server Error' });
+  }
+};
+
+exports.addMarketing = async (req, res) => {
+  try {
+    const { experience, expertise, userId } = req.body;
+
+    // --- Handle Portfolio ---
+    let thoughtLeadershipPortfolio = [];
+    if (req.body.thoughtLeadershipPortfolio) {
+      const parsedPortfolio = JSON.parse(req.body.thoughtLeadershipPortfolio);
+      thoughtLeadershipPortfolio = Array.isArray(parsedPortfolio) ? parsedPortfolio : [];
+    }
+
+    // Get existing marketing data if any
+    const existingMarketing = await ProviderMarketing.findOne({ userId });
+
+    // Attach new portfolio images or keep old ones
+    const portfolioImages = req.files?.['imageUrl'] || [];
+    thoughtLeadershipPortfolio = thoughtLeadershipPortfolio.map((item, index) => ({
+      ...item,
+      imageUrl: portfolioImages[index]
+        ? `/uploads/provider/${portfolioImages[index].filename}`
+        : existingMarketing?.thoughtLeadershipPortfolio?.[index]?.imageUrl || '',
+    }));
+
+    // --- Handle Additional Sections ---
+    let additionalSections = [];
+    if (req.body.additionalSections) {
+      const parsedSections = JSON.parse(req.body.additionalSections);
+      additionalSections = Array.isArray(parsedSections) ? parsedSections : [];
+
+      // Enforce max 3 sections
+      if (additionalSections.length > 3) {
+        return res.status(400).json({
+          status: false,
+          message: 'You can only add up to 3 additional sections',
+        });
+      }
+
+      // Handle gallery images safely
+      additionalSections = additionalSections.map((section, index) => {
+        if (section.type === 'gallery') {
+          // Use new files if uploaded
+          if (req.files?.[`galleryImages_${index}`]) {
+            section.galleryImages = req.files[`galleryImages_${index}`].map(
+              file => `/uploads/provider/${file.filename}`
+            );
+          } else if (existingMarketing?.additionalSections?.[index]?.galleryImages) {
+            // Keep previous gallery images
+            section.galleryImages = existingMarketing.additionalSections[index].galleryImages;
+          } else {
+            section.galleryImages = [];
+          }
+        }
+        return section;
+      });
+    }
+
+    // --- Handle menu and videoIntro ---
+    const menuPath = req.files?.['menu']?.[0]
+      ? `/uploads/provider/${req.files['menu'][0].filename}`
+      : existingMarketing?.menu || '';
+
+    const videoPath = req.files?.['videoIntro']?.[0]
+      ? `/uploads/provider/${req.files['videoIntro'][0].filename}`
+      : existingMarketing?.videoIntro || '';
+
+    // Delete old files only if replaced
+    if (existingMarketing) {
+      if (req.files?.['menu']?.[0] && existingMarketing.menu) safeUnlink(existingMarketing.menu);
+      if (req.files?.['videoIntro']?.[0] && existingMarketing.videoIntro) safeUnlink(existingMarketing.videoIntro);
+    }
+
+    // --- Save Marketing Data ---
+    let marketingData;
+    if (existingMarketing) {
+      marketingData = await ProviderMarketing.findByIdAndUpdate(
+        existingMarketing._id,
+        {
+          userId,
+          experience,
+          expertise,
+          menu: menuPath,
+          videoIntro: videoPath,
+          thoughtLeadershipPortfolio,
+          additionalSections,
+        },
+        { new: true }
+      );
+    } else {
+      marketingData = new ProviderMarketing({
+        userId,
+        experience,
+        expertise,
+        menu: menuPath,
+        videoIntro: videoPath,
+        thoughtLeadershipPortfolio,
+        additionalSections,
+      });
+      await marketingData.save();
+    }
+
+    return res.status(201).json({
+      status: true,
+      message: 'Marketing data saved successfully',
+      data: marketingData,
+    });
+
+  } catch (error) {
+    console.error('Add marketing error:', error);
+    return res.status(500).json({ status: false, message: 'Server Error', error: error.message });
+  }
+};
+exports.getMarketingByUserId = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const marketing = await ProviderMarketing.findOne({ userId: userId });
+
+    if (!marketing) {
+      return res.status(404).json({ status: false, message: 'Marketing data not found' });
+    }
+
+    return res.status(200).json({ status: true, data: marketing });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ status: false, message: 'Server Error' });
+  }
+};
+exports.createAccerditation = async (req, res) => {
+  try {
+    const {
+      userId,
+      licenses,licenseCurrentlyActive,
+      professionalServices,
+      additionalCertificates,
+      regulatedProfessions,
+      ...otherData
+    } = req.body;
+
+    // Parse licenses if provided as string
+    let parsedLicenses = [];
+    if (licenses) {
+      try {
+        parsedLicenses = typeof licenses === 'string'
+          ? JSON.parse(licenses)
+          : licenses;
+      } catch (err) {
+        console.error("Error parsing licenses:", err);
+        return res.status(400).json({
+          status: false,
+          message: "Invalid licenses format"
+        });
+      }
+    }
+
+    // Process license files
+    const licenseFiles = {};
+    if (req.files && Array.isArray(req.files)) {
+      req.files.forEach(file => {
+        if (file.fieldname.startsWith('tradeLicenseFile_')) {
+          const index = file.fieldname.split('_')[1];
+          licenseFiles[index] = `/uploads/provider/${file.filename}`;
+        }
+      });
+    }
+
+    // Add file paths to licenses
+    parsedLicenses = parsedLicenses.map((license, index) => ({
+      ...license,
+      tradeLicenseFile: licenseFiles[index] || license.tradeLicenseFile || null
+    }));
+
+    // Parse professional services if provided
+    let parsedProfessionalServices = [];
+    if (professionalServices) {
+      try {
+        parsedProfessionalServices = typeof professionalServices === 'string'
+          ? JSON.parse(professionalServices)
+          : professionalServices;
+      } catch (err) {
+        console.error("Error parsing professionalServices:", err);
+      }
+    }
+
+    // Parse certificate titles
+    let parsedCertificates = [];
+    if (additionalCertificates) {
+      try {
+        parsedCertificates = typeof additionalCertificates === 'string'
+          ? JSON.parse(additionalCertificates)
+          : additionalCertificates;
+      } catch (err) {
+        console.error("Error parsing additionalCertificates:", err);
+        // Fallback: try to handle as array of strings
+        parsedCertificates = Array.isArray(additionalCertificates)
+          ? additionalCertificates.map(title => ({ title }))
+          : [{ title: additionalCertificates }];
+      }
+    }
+
+    let businessLicense = await ProviderAccreditation.findOne({ userId });
+    const isEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+    if (businessLicense) {
+      const oldLicenses = businessLicense.licenses || [];
+
+      const licensesChanged = !isEqual(oldLicenses, parsedLicenses);
+      // Update existing license
+      businessLicense.licenses = parsedLicenses;
+      businessLicense.professionalServices = parsedProfessionalServices;
+      businessLicense.additionalCertificates = parsedCertificates;
+      businessLicense.regulatedProfessions = regulatedProfessions || '';
+      businessLicense.termsAgreed = otherData.termsAgreed;
+      businessLicense.isRegulatedByLaw = otherData.isRegulatedByLaw;
+      businessLicense.hasCertificate = otherData.hasCertificate;
+      businessLicense.licenseCurrentlyActive=licenseCurrentlyActive;
+
+      await businessLicense.save();
+      if (licensesChanged) {
+        await Notifications.create({
+          userId,
+          message: "Trade licence updated successfully"
+        });
+      }
+    } else {
+      // Create new license
+      businessLicense = await ProviderAccreditation.create({
+        userId,
+        licenses: parsedLicenses,licenseCurrentlyActive,
+        professionalServices: parsedProfessionalServices,
+        additionalCertificates: parsedCertificates,
+        regulatedProfessions: regulatedProfessions || '',
+        ...otherData
+      });
+    }
+
+    return res.status(201).json({
+      status: true,
+      message: 'Business license created/updated successfully',
+      data: businessLicense
+    });
+  } catch (err) {
+    console.error("Error creating business license:", err);
+    return res.status(500).json({
+      status: false,
+      message: "Server Error",
+      error: err.message
+    });
+  }
+};
+exports.getAccerditationByUserId = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const accreditation = await ProviderAccreditation.findOne({ userId: userId });
+    if (!accreditation) {
+      return res.status(404).json({ status: false, message: 'Accreditation data not found' });
+    }
+    return res.status(200).json({ status: true, data: accreditation });
+  } catch (err) {
+    return res.status(500).json({ status: false, message: 'Server Error' });
+  }
+};
+exports.createFeatures = async (req, res) => {
+  try {
+    const { recommendations, referenceProgram, references, userId, connection, chatShow } = req.body;
+    const user = await User.findById(userId)
+    let formattedConnection = [];
+    if (Array.isArray(connection)) {
+      formattedConnection = connection.map(id => ({
+        userId: id,
+        status: 'pending'
+      }));
+    }
+    for (const item of formattedConnection) {
+      await Notifications.create({
+        userId: item.userId,
+        message: `New connection request from ${user?.firstName || ''} ${user?.lastName || ''} received.`
+      });
+    }
+
+    // Validation: if referenceProgram is true, need 3 references
+    if (referenceProgram && !references) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide references when joining the Reference Program.',
+      });
+    }
+    const alreadyExist = await ProviderFeature.findOne({ userId })
+    if (alreadyExist) {
+      const newFeatures = await ProviderFeature.findByIdAndUpdate(alreadyExist._id, { userId, recommendations, referenceProgram, references, connection: formattedConnection, chatShow }, { new: true });
+      return res.status(200).json({ status: true, message: 'Features updated successfully', data: newFeatures });
+
+    } else {
+      const newFeatures = new ProviderFeature({ userId, recommendations, referenceProgram, references, connection: formattedConnection, chatShow });
+      await newFeatures.save();
+      // Get user's email
+      const user = await User.findById(userId)
+      const email = user.email;
+
+      // HTML Email Content (converted JSX → HTML string)
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; text-align: center;">
+          <h4>Thank You</h4>
+          <p>Your preferences have been saved successfully.<br/>
+          We appreciate your time and effort!</p>
+          <h5>Thank you for joining the Wizbizla Marketplace.</h5>
+          <p>
+            By submitting, you confirm that all information provided is accurate and complete.
+            Any incorrect or incomplete details may delay onboarding.
+          </p>
+          <p>
+            We'll optimise your Business Profile for effective lead generation and contact you if further details are required.
+            Once approved and our platform is LIVE, you'll receive your login details.
+            <br/>
+            For assistance, email
+            <a href="mailto:hello@wizbizla.com" style="text-decoration: underline;">hello@wizbizla.com</a>.
+          </p>
+          <div>
+            <a href="https://wizbizla.com/" target="_blank" style="display:inline-block; padding:10px 20px; background-color:#007bff; color:#fff; text-decoration:none; border-radius:4px;">Go to Wizbizla</a>
+          </div>
+        </div>
+      `;
+      // Send email
+      // await sendEmail({
+      //   to: email,
+      //   subject: "Thank You for Joining Wizbizla!",
+      //   html: emailHtml
+      // });
+      return res.status(201).json({ status: true, message: 'Features saved successfully', data: newFeatures });
+    }
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({ status: false, message: 'Server Error', error: error.message });
+  }
+};
+exports.getFeaturesByUserId = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { page = 0, limit = 9 } = req.query;
+
+    const feature = await ProviderFeature.findOne({ userId })
+      .populate({
+        path: 'connection.userId',
+        select: 'firstName lastName email',
+      });
+
+    if (!feature) {
+      return res
+        .status(404)
+        .json({ status: false, message: 'Feature data not found' });
+    }
+    if (req.query.page == undefined) {
+      return res
+        .status(200)
+        .json({ status: true, data: feature });
+    }
+
+    // Pagination logic for `connection`
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedConnections = feature.connection.slice(startIndex, endIndex);
+
+    // Fetch provider profiles only for paginated connections
+    const profileData = await Promise.all(
+      paginatedConnections.map(async (user) => {
+        const profileData =
+          (await ProviderProfile.findOne({ userId: user.userId._id }).select('profileImage title company').lean()) || {};
+        return {
+          ...user.toObject(),
+          profileData,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      status: true,
+      data: {
+        ...feature.toObject(),
+        connection: profileData,
+      },
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(feature.connection.length / limit),
+        totalConnections: feature.connection.length,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ status: false, message: 'Server Error', error: err.message });
+  }
+};
+
+//      Advertisement
+
+// CREATE advertisement
+exports.createAd = async (req, res) => {
+  const { userId, accountName, email, detail, contactNumber, spot, usePoint } = req.body;
+  const image = req.files?.['image']?.[0]?.path
+  try {
+    const user=await User.findById(userId)
+    if(!user){
+      return res.status(200).json({message:"User not found",success:false})
+    }
+    const newAd = new Advertisement({
+      userId,
+      accountName,
+      email,
+      detail,
+      spot,
+      contactNumber,
+      image,
+      usePoint: usePoint || false,
+    });
+
+    const savedAd = await newAd.save();
+    await checkEmail(user.email,user.firstName,'adRecived')
+    await Notifications.create({ userId, message: "Advertisement request has been submitted successfully." })
+    return res.status(200).json({ status: true, message: 'Advertisement created successfully', data: savedAd });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: false, message: 'Failed to create advertisement', error: error.message });
+  }
+};
+
+
+
+// READ advertisement by ID
+exports.getAdById = async (req, res) => {
+  try {
+    const { id } = req.params; // userId
+    const page = parseInt(req.query.page) || 1; // current page, default 1
+    const limit = parseInt(req.query.limit) || 9; // items per page, default 10
+    const skip = (page - 1) * limit;
+
+    const total = await Advertisement.countDocuments({ userId: id });
+    const ads = await Advertisement.find({ userId: id })
+      .populate('userId')
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 }); // optional: latest first
+
+    if (!ads || ads.length === 0)
+      return res.status(404).json({ status: false, message: 'Advertisement not found' });
+
+    return res.status(200).json({
+      status: true,
+      message: 'Advertisements fetched successfully',
+      data: ads,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: false, message: 'Failed to fetch advertisements', error: error.message });
+  }
+};
+
+
+// UPDATE advertisement by ID
+exports.updateAd = async (req, res) => {
+  const image = req.files?.['image']?.[0]?.path
+  const { userId, accountName, email, detail, contactNumber, spot, usePoint, adId } = req.body;
+  try {
+    const isExist = await Advertisement.findById(adId)
+    if (image) {
+      safeUnlink(isExist.image)
+    }
+    const updatedAd = await Advertisement.findByIdAndUpdate(
+      adId,
+      { userId, accountName, email, detail, contactNumber, usePoint },
+      { new: true }
+    );
+
+    if (!updatedAd) return res.status(404).json({ status: false, message: 'Advertisement not found' });
+
+    return res.status(200).json({ status: true, message: 'Advertisement updated successfully', data: updatedAd });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: false, message: 'Failed to update advertisement', error: error.message });
+  }
+};
+
+// DELETE advertisement by ID
+exports.deleteAd = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const isExist = await Advertisement.findById(id)
+    const deletedAd = await Advertisement.findByIdAndDelete(id);
+
+    if (!deletedAd) return res.status(404).json({ status: false, message: 'Advertisement not found' });
+    safeUnlink(isExist.image)
+    return res.status(200).json({ status: true, message: 'Advertisement deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: false, message: 'Failed to delete advertisement', error: error.message });
+  }
+};
+
+exports.addTrustedReference = async (req, res) => {
+  const { userId, referenceUser, status, comment } = req.body;
+  try {
+    const isExist = await User.findById(userId)
+    if (!isExist) return res.status(200).json({ message: "User not found", status: false })
+    const isRef = await Reference.findOne({ userId, referenceUser })
+    if (isRef) return res.status(200).json({ status: true })
+    const newRef = await Reference.create({ userId, referenceUser, status, comment });
+    await Notifications.create({ userId, message: "Your request has been sent to the service provider." ,icon:"grey"})
+    return res.status(200).json({ status: true, message: 'Reference created successfully', data: newRef });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: false, message: 'Failed to create reference', error: error.message });
+  }
+};
+exports.getTrustedReference = async (req, res) => {
+  const userId = req.params.id;
+  const { page, limit } = req.query;
+
+  try {
+    const isExist = await User.findById(userId);
+    if (!isExist) {
+      return res.status(200).json({ message: "User not found", status: false });
+    }
+
+    let refData;
+    let totalCount;
+
+    // ✅ If pagination query exists
+    if (page) {
+      const pageNum = parseInt(page) || 1;
+      const limitNum = parseInt(limit) || 10;
+      const skip = (pageNum - 1) * limitNum;
+
+      totalCount = await Reference.countDocuments({ userId });
+      refData = await Reference.find({ userId })
+        .populate({ path: 'userId', select: 'firstName lastName' })
+        .skip(skip)
+        .limit(limitNum)
+        .sort({ createdAt: -1 });
+
+      return res.status(200).json({
+        status: true,
+        message: "Reference fetched successfully (paginated)",
+        data: refData,
+        page: pageNum,
+        limit: limitNum,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limitNum),
+      });
+    }
+
+    // ✅ If no pagination query, return all
+    refData = await Reference.find({ userId }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      status: true,
+      message: "Reference fetched successfully",
+      data: refData,
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: false,
+      message: "Failed to fetch Reference",
+      error: error.message,
+    });
+  }
+};
+
+exports.addReference = async (req, res) => {
+  const { userId, refData } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user)
+      return res.status(404).json({ message: "User not found", status: false });
+    const isMatch = await User.findOne({ email: refData.contact, role: 'provider' });
+    if (!isMatch)
+      return res.status(404).json({ message: "User not found", status: false });
+    let provider = await ProviderFeature.findOne({ userId });
+    if (!provider)
+      return res
+        .status(404)
+        .json({ message: "Provider data not found", status: false });
+
+    // Push new reference
+    provider.references.push(refData);
+
+    // Save updated provider
+    await provider.save();
+    await Notifications.create({ userId, message: `Reference request sent successfully` })
+    return res
+      .status(200)
+      .json({ message: "Reference updated", status: true, data: provider });
+  } catch (error) {
+    console.error("Error updating reference:", error);
+    return res.status(500).json({ message: "Server Error", status: false });
+  }
+};
+exports.removeReference = async (req, res) => {
+  const { userId, referenceId } = req.body; // or req.params if you send it via URL
+
+  try {
+    const user = await User.findById(userId);
+    if (!user)
+      return res.status(404).json({ message: "User not found", status: false });
+
+    const provider = await ProviderFeature.findOne({ userId });
+    if (!provider)
+      return res
+        .status(404)
+        .json({ message: "Provider data not found", status: false });
+
+    const refIndex = provider.references.findIndex(
+      (ref) => ref._id.toString() === referenceId
+    );
+
+    if (refIndex === -1)
+      return res
+        .status(404)
+        .json({ message: "Reference not found", status: false });
+
+    provider.references.splice(refIndex, 1);
+
+    // Save changes
+    await provider.save();
+
+    return res.status(200).json({
+      message: "Reference removed successfully",
+      status: true,
+      data: provider,
+    });
+  } catch (error) {
+    console.error("Error removing reference:", error);
+    return res.status(500).json({ message: "Server Error", status: false });
+  }
+};
+exports.createOrUpdateStayUpdated = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const data = req.body;
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+    const updated = await StayUpdate.findOneAndUpdate(
+      { userId },
+      data,
+      { upsert: true, new: true }
+    )
+
+    return res.status(200).json({
+      status: true,
+      message: "Stay Updated form saved successfully",
+      data: updated,
+    });
+  } catch (error) {
+    console.error("Error saving stay updated form:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getStayUpdatedByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const form = await StayUpdate.findOne({ userId });
+
+    return res.status(200).json({
+      status: true,
+      data: form,
+    });
+  } catch (error) {
+    console.error("Error fetching stay updated form:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.createOrUpdateService = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const data = req.body;
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const updated = await ServiceForm.findOneAndUpdate(
+      { userId },
+      data,
+      { upsert: true, new: true }
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: "Service form saved successfully",
+      data: updated,
+    });
+  } catch (error) {
+    console.error("Error saving service form:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getServiceByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const form = await ServiceForm.findOne({ userId });
+
+    return res.status(200).json({
+      status: true,
+      data: form,
+    });
+  } catch (error) {
+    console.error("Error fetching service form:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.createOrUpdatePreference = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+    const data = req.body;
+
+    const updated = await PreferenceForm.findOneAndUpdate(
+      { userId },
+      data,
+      { upsert: true, new: true }
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: "Preference form saved successfully",
+      data: updated,
+    });
+  } catch (error) {
+    console.error("Error saving preference form:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getPreferenceByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const form = await PreferenceForm.findOne({ userId });
+
+    return res.status(200).json({
+      status: true,
+      data: form,
+    });
+  } catch (error) {
+    console.error("Error fetching preference form:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.updateImage = async (req, res) => {
+  const { userId } = req.body;
+  const image = req.files?.['profileImage']?.[0]?.path
+  try {
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await ProviderProfile.findOne({ userId });
+    if (data.image) {
+      safeUnlink(data.profileImage)
+    }
+    await ProviderProfile.findByIdAndUpdate(data._id, { profileImage: image }, { new: true })
+    await Notifications.create({ userId, message: "Profile image changed successfully" })
+    return res.status(200).json({
+      status: true,
+      message: "Profile image saved successfully",
+    });
+  } catch (error) {
+    console.error("Error saving profile image:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.deleteImage = async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await ProviderProfile.findOne({ userId });
+    if (data.image) {
+      safeUnlink(data.profileImage)
+    }
+    await ProviderProfile.findByIdAndUpdate(data._id, { profileImage: '' }, { new: true })
+
+    return res.status(200).json({
+      status: true,
+      message: "Profile image deleted successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.analyticData = async (req, res) => {
+  const userId = req.params.id;
+  const { duration, ageDuration } = req.query;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(200).json({ status: false, message: "User not found" });
+    }
+
+    let startDate = new Date();
+    let groupFormat = "%Y-%m";
+
+    switch (duration) {
+      case "12months":
+        startDate.setMonth(startDate.getMonth() - 11);
+        groupFormat = "%Y-%m"; // Month wise
+        break;
+
+      case "3months":
+        startDate.setMonth(startDate.getMonth() - 2);
+        groupFormat = "%Y-%m";
+        break;
+
+      case "30days":
+        startDate.setDate(startDate.getDate() - 29);
+        groupFormat = "%Y-%m-%d"; // Day wise
+        break;
+
+      case "7days":
+        startDate.setDate(startDate.getDate() - 6);
+        groupFormat = "%Y-%m-%d";
+        break;
+
+      case "24hours":
+        startDate.setHours(startDate.getHours() - 23);
+        groupFormat = "%Y-%m-%d %H:00"; // Hour wise
+        break;
+
+      default:
+        startDate.setMonth(startDate.getMonth() - 11);
+    }
+    let groupStage = {};
+    let projectStage = {};
+    let sortStage = {};
+
+    // duration-aware aggregation
+    if (duration === "24hours") {
+      groupStage = { _id: { hour: { $hour: "$createdAt" } }, count: { $sum: 1 } };
+      projectStage = { _id: 0, label: { $concat: [{ $toString: "$_id.hour" }, ":00"] }, count: 1 };
+      sortStage = { "_id.hour": 1 };
+    } else if (duration === "7days" || duration === "30days") {
+      groupStage = { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" }, day: { $dayOfMonth: "$createdAt" } }, count: { $sum: 1 } };
+      projectStage = {
+        _id: 0,
+        label: {
+          $dateToString: {
+            format: "%d %b",
+            date: { $dateFromParts: { year: "$_id.year", month: "$_id.month", day: "$_id.day" } }
+          }
+        },
+        count: 1
+      };
+      sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
+    } else {
+      // 3months / 12months
+      groupStage = { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }, count: { $sum: 1 } };
+      projectStage = {
+        _id: 0,
+        label: { $concat: [{ $arrayElemAt: [["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], "$_id.month"] }, " ", { $toString: "$_id.year" }] },
+        count: 1
+      };
+      sortStage = { "_id.year": 1, "_id.month": 1 };
+    }
+
+    const analytics = await ProfileViewModel.aggregate([
+      { $match: { viewUserId: new mongoose.Types.ObjectId(userId), createdAt: { $gte: startDate } } },
+      { $group: groupStage },
+      { $project: projectStage },
+      { $sort: sortStage }
+    ]);
+
+
+
+    const now = new Date();
+    const last24Hours = new Date(now);
+    last24Hours.setHours(last24Hours.getHours() - 24);
+    const totalAccountSearch = await ProfileViewModel.countDocuments({ viewUserId: userId, createdAt: { $lte: last24Hours } })
+    const previous24Hours = new Date(now);
+    previous24Hours.setHours(now.getHours() - 48);
+    const previousDayCount = await ProfileViewModel.countDocuments({
+      viewUserId: userId,
+      createdAt: {
+        $gte: previous24Hours,
+        $lt: last24Hours
+      }
+    });
+    let percentageChange = 100;
+
+    if (previousDayCount > 0) {
+      percentageChange = ((totalAccountSearch - previousDayCount) / previousDayCount) * 100;
+    }
+
+
+    const totalBookmarkData = await BookmarkModel.countDocuments({ bookmarkUser: userId })
+    const totalRecommendationData = await RecommendationModel.countDocuments({ recommendedUser: userId })
+
+
+    const avgRatingData = await ProviderFeedbackModel.aggregate([
+      {
+        $match: {
+          feedbackUser: new mongoose.Types.ObjectId(userId)
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: "$rating" },
+          totalReviews: { $sum: 1 }
+        }
+      }
+    ]);
+    const { labels, counts } = generateEmptyLabels(startDate, duration);
+
+    // Fill counts from analytics
+    analytics.forEach(item => {
+      const index = labels.indexOf(item.label);
+      if (index !== -1) counts[index] = item.count;
+    });
+
+    const finalAnalytics = labels.map((label, i) => ({ label, count: counts[i] }));
+    const membershipData = await BuyMembership.findOne({ status: 'active', userId }).sort({ createdAt: -1 }).populate('membershipId') || null
+    const isTopChoice = membershipData?.membershipId?.topChoice
+    if (!isTopChoice) {
+      return res.status(200).json({
+        success: true,
+        message: "Analytics data fetched",
+        analytics: finalAnalytics, totalAccountSearch, avgRatingData:avgRatingData?.length>0?
+         avgRatingData[0].averageRating:0, percentageChange, totalBookmarkData, totalRecommendationData
+      });
+    } else {
+      let startDate = new Date();
+      let groupFormat = "%Y-%m";
+      switch (ageDuration) {
+        case "12months":
+          startDate.setMonth(startDate.getMonth() - 11);
+          groupFormat = "%Y-%m"; // Month wise
+          break;
+
+        case "3months":
+          startDate.setMonth(startDate.getMonth() - 2);
+          groupFormat = "%Y-%m";
+          break;
+
+        case "30days":
+          startDate.setDate(startDate.getDate() - 29);
+          groupFormat = "%Y-%m-%d"; // Day wise
+          break;
+
+        case "7days":
+          startDate.setDate(startDate.getDate() - 6);
+          groupFormat = "%Y-%m-%d";
+          break;
+
+        case "24hours":
+          startDate.setHours(startDate.getHours() - 23);
+          groupFormat = "%Y-%m-%d %H:00"; // Hour wise
+          break;
+
+        default:
+          startDate.setMonth(startDate.getMonth() - 11);
+      }
+      let groupStage = {};
+      let projectStage = {};
+      let sortStage = {};
+
+      // duration-aware aggregation
+      if (duration === "24hours") {
+        groupStage = { _id: { hour: { $hour: "$createdAt" } }, count: { $sum: 1 } };
+        projectStage = { _id: 0, label: { $concat: [{ $toString: "$_id.hour" }, ":00"] }, count: 1 };
+        sortStage = { "_id.hour": 1 };
+      } else if (duration === "7days" || duration === "30days") {
+        groupStage = { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" }, day: { $dayOfMonth: "$createdAt" } }, count: { $sum: 1 } };
+        projectStage = {
+          _id: 0,
+          label: {
+            $dateToString: {
+              format: "%d %b",
+              date: { $dateFromParts: { year: "$_id.year", month: "$_id.month", day: "$_id.day" } }
+            }
+          },
+          count: 1
+        };
+        sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
+      } else {
+        // 3months / 12months
+        groupStage = { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }, count: { $sum: 1 } };
+        projectStage = {
+          _id: 0,
+          label: { $concat: [{ $arrayElemAt: [["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], "$_id.month"] }, " ", { $toString: "$_id.year" }] },
+          count: 1
+        };
+        sortStage = { "_id.year": 1, "_id.month": 1 };
+      }
+      const viewData = await ProfileViewModel.find({ viewUserId: userId, createdAt: { $gte: startDate } }).populate('userId')
+      const consumerIds = viewData
+        ?.filter(item => item?.userId?.role === 'consumer')
+        .map(item => item?.userId?._id);
+      const providerIds = viewData
+        ?.filter(item => item?.userId?.role === 'provider')
+        .map(item => item?.userId?._id);
+      const consumerGenderCount = await ConsumerProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: consumerIds },
+            gender: { $in: ["male", "female"] }
+          }
+        },
+        {
+          $group: {
+            _id: "$gender",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const consumerAgeCount = await ConsumerProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: consumerIds },
+            age: { $nin: [null, "null", ""] },
+          }
+        },
+        {
+          $group: {
+            _id: "$age", // "25-34"
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const providerGenderCount = await IndividualProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: providerIds },
+            gender: { $in: ["male", "female"] }
+          }
+        },
+        {
+          $group: {
+            _id: "$gender",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const providerAgeCount = await IndividualProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: providerIds },
+            age: { $nin: [null, "null", ""] }
+          }
+        },
+        {
+          $group: {
+            _id: "$age",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const genderMap = {};
+
+      // consumer add
+      consumerGenderCount.forEach(item => {
+        genderMap[item._id] = (genderMap[item._id] || 0) + item.count;
+      });
+
+      // provider add
+      providerGenderCount.forEach(item => {
+        genderMap[item._id] = (genderMap[item._id] || 0) + item.count;
+      });
+      const total = Object.values(genderMap).reduce((a, b) => a + b, 0);
+      const genderPercentage = Object.entries(genderMap).map(
+        ([gender, count]) => ({
+          gender,
+          percentage: Number(((count / total) * 100).toFixed(1))
+        })
+      );
+      const ageMap = {};
+
+      // consumer add
+      consumerAgeCount.forEach(item => {
+        ageMap[item._id] = (ageMap[item._id] || 0) + item.count;
+      });
+
+      // provider add
+      providerAgeCount.forEach(item => {
+        ageMap[item._id] = (ageMap[item._id] || 0) + item.count;
+      });
+      const ageBarData = Object.entries(ageMap)
+        .map(([ageRange, count]) => ({
+          ageRange,
+          count
+        }))
+        .sort((a, b) => a.ageRange.localeCompare(b.ageRange));
+
+      const viewEmiData = await ProfileViewModel.find({ viewUserId: userId, createdAt: { $gte: startDate } }).populate('userId')
+      const consumerEmiIds = viewEmiData
+        ?.filter(item => item?.userId?.role === 'consumer')
+        .map(item => item?.userId?._id);
+      const providerEmiIds = viewEmiData
+        ?.filter(item => item?.userId?.role === 'provider')
+        .map(item => item?.userId?._id);
+      const consumerEmirateCount = await Basket.aggregate([
+        {
+          $match: {
+            userId: { $in: consumerEmiIds },
+            emirate: { $nin: [null, "null", ""] },
+
+            // emirate: { $in: ["male", "female"] }
+          }
+        },
+        {
+          $group: {
+            _id: "$emirate",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const providerEmirateCount = await BusinessProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: providerEmiIds },
+            emirate: { $nin: [null, "null", ""] },
+          }
+        },
+        {
+          $group: {
+            _id: "$emirate", // "25-34"
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const emirateMap = {};
+
+      // consumer add
+      consumerEmirateCount.forEach(item => {
+        emirateMap[item._id] = (emirateMap[item._id] || 0) + item.count;
+      });
+
+      // provider add
+      providerEmirateCount.forEach(item => {
+        emirateMap[item._id] = (emirateMap[item._id] || 0) + item.count;
+      });
+      const emirateBarData = Object.entries(emirateMap)
+        .map(([emirate, count]) => ({
+          emirate,
+          count
+        }))
+        .sort((a, b) => a.emirate.localeCompare(b.emirate));
+
+      const consumerVisaCount = await Basket.aggregate([
+        {
+          $match: {
+            userId: { $in: consumerEmiIds },
+            visaStatus: { $nin: [null, "null", ""] },
+
+            // emirate: { $in: ["male", "female"] }
+          }
+        },
+        {
+          $group: {
+            _id: "$emirate",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const providerVisaCount = await IndividualProfile.aggregate([
+        {
+          $match: {
+            userId: { $in: providerEmiIds },
+            visaStatus: { $nin: [null, "null", ""] },
+          }
+        },
+        {
+          $group: {
+            _id: "$visaStatus", // "25-34"
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      const visaMap = {};
+
+      // consumer add
+      consumerVisaCount.forEach(item => {
+        visaMap[item._id] = (visaMap[item._id] || 0) + item.count;
+      });
+
+      // provider add
+      providerVisaCount.forEach(item => {
+        visaMap[item._id] = (visaMap[item._id] || 0) + item.count;
+      });
+      const visaBarData = Object.entries(visaMap)
+        .map(([visaStatus, count]) => ({
+          visaStatus,
+          count
+        }))
+        .sort((a, b) => a.visaStatus.localeCompare(b.visaStatus));
+
+      return res.status(200).json({
+        success: true,
+        message: "Analytics data fetched",
+        analytics: finalAnalytics, genderPercentage, emirateBarData, visaBarData, ageBarData, totalAccountSearch, 
+        avgRatingData:avgRatingData?.length>0 ? avgRatingData[0].averageRating:0, percentageChange, totalBookmarkData, totalRecommendationData
+      });
+    }
+
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
+};
+exports.individualProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.body.userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await IndividualProfile.findOne({ userId: req.body.userId });
+    if (data) {
+      await IndividualProfile.findByIdAndUpdate(data._id, req.body, { new: true })
+    } else {
+      await IndividualProfile.create(req.body)
+    }
+    return res.status(200).json({
+      status: true,
+      message: "Individual Profile updated successfully",
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.getIndividualProfile = async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await IndividualProfile.findOne({ userId });
+    if (data) {
+      return res.status(200).json({ message: "Profile data fetched", data, status: true })
+    } else {
+      return res.status(200).json({ message: "Profile not found", status: false })
+
+    }
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.businessProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.body.userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await BusinessProfile.findOne({ userId: req.body.userId });
+    if (data) {
+      await Notifications.create({ userId: req.body.userId, message: "You have updated your Business Profile Info." })
+      await BusinessProfile.findByIdAndUpdate(data._id, req.body, { new: true })
+    } else {
+      await BusinessProfile.create(req.body)
+    }
+    return res.status(200).json({
+      status: true,
+      message: "Business Profile updated successfully",
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+exports.getBusinessProfile = async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const user = await User.findById(userId)
+    if (!user) return res.status(200).json({ message: "User not found", status: false })
+
+    const data = await BusinessProfile.findOne({ userId });
+    if (data) {
+      return res.status(200).json({ message: "Profile data updated", status: true, data })
+    } else {
+      return res.status(200).json({ message: "Profile not found", status: false })
+
+    }
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+// Helper: Generate labels with zero counts
+function generateEmptyLabels(startDate, duration) {
+  const labels = [];
+  const counts = [];
+
+  const now = new Date();
+  const current = new Date(startDate);
+
+  if (duration === "24hours") {
+    for (let i = 0; i < 24; i++) {
+      const hourDate = new Date(current);
+      hourDate.setHours(current.getHours() + i);
+      const hour = hourDate.toLocaleString("en-US", { hour: "2-digit", hour12: false, timeZone: "Asia/Kolkata" });
+      labels.push(`${hour}:00`);
+      counts.push(0);
+    }
+  } else if (duration === "7days" || duration === "30days") {
+    while (current <= now) {
+      const label = current.toLocaleDateString("en-US", {
+        day: "2-digit",
+        month: "short",
+        timeZone: "Asia/Kolkata"
+      }); // e.g., 01 Dec
+      labels.push(label);
+      counts.push(0);
+      current.setDate(current.getDate() + 1);
+    }
+  } else if (duration === "3months" || duration === "12months") {
+    while (current <= now) {
+      const label = current.toLocaleString("en-US", {
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Kolkata"
+      }); // e.g., December 2025
+      labels.push(label);
+      counts.push(0);
+      current.setMonth(current.getMonth() + 1);
+    }
+  }
+
+  return { labels, counts };
+}
+
